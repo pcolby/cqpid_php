@@ -1,0 +1,378 @@
+Index: cpp/bindings/swig_php_typemaps.i
+===================================================================
+--- cpp/bindings/swig_php_typemaps.i	(revision 0)
++++ cpp/bindings/swig_php_typemaps.i	(revision 0)
+@@ -0,0 +1,20 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++%apply size_t { uint64_t };
+
+Property changes on: cpp/bindings/qpid/php
+___________________________________________________________________
+Added: svn:ignore
+   + cqpid.cpp
+cqpid.php
+php_cqpid.h
+
+
+Index: cpp/bindings/qpid/php/Makefile
+===================================================================
+--- cpp/bindings/qpid/php/Makefile	(revision 0)
++++ cpp/bindings/qpid/php/Makefile	(revision 0)
+@@ -0,0 +1,34 @@
++#
++# This is just a temporary Makefile to aide with early development,
++# and should be discarded when the PHP binding is integrated into
++# Qpid's build process.
++#
++
++SWIG = /usr/local/bin/swig
++PHP_INCLUDES = $(shell php-config --includes)
++PHP_INCLUDE_DIR = $(shell php-config --include-dir)
++PHP_EXTENSION_DIR = $(shell php-config --extension-dir)
++
++all: cqpid.so
++
++cqpid.so: php.i
++	$(SWIG) -c++ -php -I/usr/local/include -Wall -o cqpid.cpp php.i
++	sed -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g' \
++	       -e 's/zend_error_noreturn/zend_error/g' cqpid.cpp
++	$(CXX) -fpic $(PHP_INCLUDES) -lqpidmessaging -o cqpid.so -shared cqpid.cpp
++	sed -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g'     \
++	       -e 's/\(class\|function\|new\) qpid_messaging_/\1 /g' \
++	       -e 's/\(static function \(FOREVER\|IMMEDIATE\|SECOND\|MINUTE\)()\)/const \2 = QPID_MESSAGING_DURATION_\2; \1/' \
++	       -e 's/^<?php/<?php namespace qpid\\messaging;/' cqpid.php
++
++install:
++	mkdir -p '$(PHP_INCLUDE_DIR)/ext/cqpid/'
++	cp php_cqpid.h '$(PHP_INCLUDE_DIR)/ext/cqpid/'
++	cp cqpid.so '$(PHP_EXTENSION_DIR)/'
++	@echo 'Add the following line to your PHP configuration:'
++	@echo 'extension=$(PHP_EXTENSION_DIR)/cqpid.so'
++	# TODO: detect the following directory somehow.
++	cp cqpid.php '/usr/share/php/'
++
++clean:
++	$(RM) cqpid.* php_cqpid.h
+Index: cpp/bindings/qpid/php/php.i
+===================================================================
+--- cpp/bindings/qpid/php/php.i	(revision 0)
++++ cpp/bindings/qpid/php/php.i	(revision 0)
+@@ -0,0 +1,113 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++%module cqpid
++
++%include "std_string.i"
++
++/* Include the PHP-specific SWIG typemaps */
++%include "../../swig_php_typemaps.i"
++
++/* Define the general-purpose exception handling */
++%exception {
++    try {
++        $action
++    } catch (const qpid::messaging::MessagingException &ex) {
++        SWIG_exception(SWIG_RuntimeError, ex.what());
++    }
++}
++
++/*
++ * Apply a custom prefix to all SWIG-generated global functions.  This is not
++ * only good practice, but is necessary for this module since without doing so
++ * the Session::commit method would be exposed as session_commit which clashes
++ * with the PHP built-in session_commit function preventing the PHP
++ * interpreter from loading.
++ *
++ * See https://sourceforge.net/tracker/?func=detail&aid=3168551&group_id=1645&atid=351645
++ * for more details.
++ */
++%rename("qpid_messaging_%s") "";
++/*
++ * Unfortunately the %rename directive above will result in the wrapper
++ * classes also being prefixed, so for example the Connection class will become
++ * qpid_messaging_Connection.  Thus we strip the prefix from wrapper class
++ * names later in the build system.
++ *
++ * Alternatively, we could perform a narrow %rename of just functions, not
++ * classes, such as: %rename("qpid_messagins_%s", %$isfunction) "";  However,
++ * that will still result in some non-prefixed global functions, such as
++ * new_Session and Session_copy, which can still cause conflicts with other
++ * modules, causing PHP to fail to start.
++ */
++
++/*
++ * Rename or ignore some overloaded member functions that expose a bug
++ * (segmentation fault) in SWIG.
++ *
++ * See https://sourceforge.net/tracker/?func=detail&aid=3168531&group_id=1645&atid=101645
++ * for more details.
++ */
++//%rename(fetchNoThrow)        qpid::messaging::Receiver::fetch       (Message&);
++//%rename(fetchNoThrow)        qpid::messaging::Receiver::fetch       (Message&,Duration);
++//%rename(getNoThrow)          qpid::messaging::Receiver::get         (Message&);
++//%rename(getNoThrow)          qpid::messaging::Receiver::get         (Message&,Duration);
++//%rename(nextReceiverNoThrow) qpid::messaging::Session ::nextReceiver(Receiver&);
++//%rename(nextReceiverNoThrow) qpid::messaging::Session ::nextReceiver(Receiver&,Duration);
++%ignore qpid::messaging::Receiver::fetch       (Message&);
++%ignore qpid::messaging::Receiver::fetch       (Message&,Duration);
++%ignore qpid::messaging::Receiver::get         (Message&);
++%ignore qpid::messaging::Receiver::get         (Message&,Duration);
++%ignore qpid::messaging::Session ::nextReceiver(Receiver&);
++%ignore qpid::messaging::Session ::nextReceiver(Receiver&,Duration);
++
++/* Rename some operators that would otherwise not be accessible to PHP */
++%rename(copy)     operator=(const Address&);
++%rename(copy)     operator=(const Message&);
++%rename(copy)     operator=(const Receiver&);
++%rename(copy)     operator=(const Sender&);
++%rename(copy)     operator=(const Session&);
++%rename(copy)     operator=(const Connection&);
++%rename(isValid)  operator bool() const;
++%rename(isNull)   operator!() const;
++%rename(multiply) operator*(const Duration& duration, uint64_t multiplier);
++%rename(multiply) operator*(uint64_t multiplier,const Duration& duration);
++
++/*
++ * PHP has no concept of constant-variables, so the following methods will
++ * never be used by SWIG/PHP (there are non-const versions which SWIG will use
++ * instead).  Ignore them, just to avoid benign SWIG warnings.
++ */
++%ignore qpid::messaging::Address::getOptions()    const;
++%ignore qpid::messaging::Message::getProperties() const;
++
++/*
++ * Define some global constants to make Duration a little easier to use (since
++ * PHP does not support operator*).  We'll modify the generated cqpid.php
++ * wrapper file to expose these as Duration class member constants too.
++ */
++%init {
++    SWIG_LONG_CONSTANT(QPID_MESSAGING_DURATION_FOREVER,   qpid::messaging::Duration::FOREVER.getMilliseconds());
++    SWIG_LONG_CONSTANT(QPID_MESSAGING_DURATION_IMMEDIATE, qpid::messaging::Duration::IMMEDIATE.getMilliseconds());
++    SWIG_LONG_CONSTANT(QPID_MESSAGING_DURATION_SECOND,    qpid::messaging::Duration::SECOND.getMilliseconds());
++    SWIG_LONG_CONSTANT(QPID_MESSAGING_DURATION_MINUTE,    qpid::messaging::Duration::MINUTE.getMilliseconds());
++}
++
++/* Finally, include the common Qpid SWIG interface file */
++%include </home/paul/src/qpidc-0.8/bindings/qpid/qpid.i>
+Index: cpp/bindings/qpid/examples/php/cli/hello_world.php
+===================================================================
+--- cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
++++ cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
+@@ -0,0 +1,50 @@
++<?php
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++namespace qpid\messaging;
++
++require('cqpid.php');
++
++$broker = $argc > 1 ? $argv[1] : 'localhost:5672';
++$address = $argc > 2 ? $argv[2] : 'amq.topic';
++$connectionOptions = $argc > 3 ? $argv[3] : '';
++
++$connection = new Connection($broker, $connectionOptions);
++try {
++    $connection->open();
++    $session = $connection->createSession();
++
++    $receiver = $session->createReceiver($address);
++    $sender = $session->createSender($address);
++
++    $sender->send(new Message('Hello world!'));
++
++    $message = $receiver->fetch(new Duration(Duration::SECOND * 1));
++    print $message->getContent() . "\n";
++    $session->acknowledge();
++
++    $connection->close();
++    exit(0);
++} catch(\Exception $error) {
++    print $error->getMessage() . "\n";
++    $connection->close();
++    exit(1);
++}
++?>
+Index: cpp/bindings/qpid/examples/php/cli/client.php
+===================================================================
+--- cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
++++ cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
+@@ -0,0 +1,62 @@
++<?php
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++namespace qpid\messaging;
++
++require('cqpid.php');
++
++$url = $argc>1 ? $argv[1] : "amqp:tcp:127.0.0.1:5672";
++$connectionOptions = $argc > 2 ? $argv[2] : "";
++
++$connection = new Connection($url, $connectionOptions);
++try {
++    $connection->open();
++    $session = $connection->createSession();
++
++    $sender = $session->createSender("service_queue");
++
++    //create temp queue & receiver...
++    $responseQueue = new Address("#response-queue; {create:always, delete:always}");
++    $receiver = $session->createReceiver($responseQueue);
++
++    // Now send some messages ...
++    $s = array(
++        "Twas brillig, and the slithy toves",
++        "Did gire and gymble in the wabe.",
++        "All mimsy were the borogroves,",
++        "And the mome raths outgrabe."
++    );
++
++    $request = new Message();
++    $request->setReplyTo($responseQueue);
++    foreach ($s as $content) {
++       $request->setContent($content);
++       $sender->send($request);
++       $response = $receiver->fetch();
++       print $request->getContent() . ' -> ' . $response->getContent() . "\n";
++    }
++    $connection->close();
++    exit(0);
++} catch(\Exception $error) {
++    print $error->getMessage() . "\n";
++    $connection->close();
++}
++exit(1);
++?>
+Index: cpp/bindings/qpid/examples/php/cli/server.php
+===================================================================
+--- cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
++++ cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
+@@ -0,0 +1,60 @@
++<?php
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++namespace qpid\messaging;
++
++require('cqpid.php');
++
++$url = $argc>1 ? $argv[1] : "amqp:tcp:127.0.0.1:5672";
++$connectionOptions = $argc > 3 ? $argv[3] : "";
++
++$connection = new Connection($url, $connectionOptions);
++try {
++    $connection->open();
++    $session = $connection->createSession();
++    $receiver = $session->createReceiver("service_queue; {create: always}");
++
++    while (true) {
++        $request = $receiver->fetch();
++        $address = $request->getReplyTo();
++        if ($address->isValid()) {
++            $sender = $session->createSender($address);
++            $s = $request->getContent();
++            // toupper ... std::transform(s.begin(), s.end(), s.begin(), toupper);
++            $response = new Message($s);
++            $sender->send($response);
++            print 'Processed request: ' .
++                  $request->getContent() .
++                  ' -> ' .
++                  $response->getContent() . "\n";
++            $session->acknowledge();
++        } else {
++            print 'Error: no reply address specified for request: ' . $request->getContent() . "\n";
++            $session->reject($request);
++        }
++    }
++    $connection->close();
++    exit(0);
++} catch(\Exception $error) {
++    print $error->getMessage() . "\n";
++    $connection->close();
++}
++exit(1);
++?>
