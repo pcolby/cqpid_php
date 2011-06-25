@@ -1,17 +1,8 @@
-
-Property changes on: cpp/bindings/qmf2/php
-___________________________________________________________________
-Added: svn:ignore
-   + cqmf2.cpp
-cqmf2.php
-php_cqmf2.h
-
-
-Index: cpp/bindings/qmf2/php/Makefile.am
+Index: qpid/cpp/bindings/qmf2/php/Makefile.am
 ===================================================================
---- cpp/bindings/qmf2/php/Makefile.am	(revision 0)
-+++ cpp/bindings/qmf2/php/Makefile.am	(revision 0)
-@@ -0,0 +1,72 @@
+--- qpid/cpp/bindings/qmf2/php/Makefile.am	(revision 0)
++++ qpid/cpp/bindings/qmf2/php/Makefile.am	(revision 0)
+@@ -0,0 +1,71 @@
 +#
 +# Licensed to the Apache Software Foundation (ASF) under one
 +# or more contributor license agreements.  See the NOTICE file
@@ -41,7 +32,6 @@ Index: cpp/bindings/qmf2/php/Makefile.am
 +SWIG_FLAGS = -w401
 +PHP_QPID_VERSION = -DPHP_QPID_VERSION='"$(VERSION)"'
 +
-+#                  -e 's/const qmf_/const /g' 
 +
 +$(SWIG_OUTPUT): $(srcdir)/php.i $(srcdir)/../../qpid/php/phpinfo.i $(srcdir)/../qmf2.i $(srcdir)/../../swig_php_typemaps.i
 +	$(SWIG) -c++ -php $(SWIG_FLAGS) $(INCLUDES) $(QPID_CXXFLAGS) -o cqmf2.cpp $(srcdir)/php.i
@@ -49,7 +39,7 @@ Index: cpp/bindings/qmf2/php/Makefile.am
 +	          -e 's/zend_error_noreturn/zend_error/g' cqmf2.cpp
 +	$(SED) -i -e 's/\(qmf_\w*\)_qmf/\1/g' \
 +	          -e 's/\(class\|extends\|function\|new\) qmf_/\1 /g' \
-+                  -e 's/const qmf_/const /g' \
++	          -e 's/const qmf_/const /g' \
 +		cqmf2.php
 +	if test $(PHP_VERSION) -ge 50300; then \
 +		$(SED) -i -e 's/^<?php/<?php namespace qmf;/' cqmf2.php; \
@@ -84,10 +74,156 @@ Index: cpp/bindings/qmf2/php/Makefile.am
 +CLEANFILES = $(SWIG_OUTPUT) $(PHP_INI_FILE)
 +
 +endif # HAVE_PHP_DEVEL
-Index: cpp/bindings/qmf2/php/php.i
+Index: qpid/cpp/bindings/qmf2/php/CMakeLists.txt
 ===================================================================
---- cpp/bindings/qmf2/php/php.i	(revision 0)
-+++ cpp/bindings/qmf2/php/php.i	(revision 0)
+--- qpid/cpp/bindings/qmf2/php/CMakeLists.txt	(revision 0)
++++ qpid/cpp/bindings/qmf2/php/CMakeLists.txt	(revision 0)
+@@ -0,0 +1,140 @@
++#
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
++#
++#   http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
++#
++
++##------------------------------------------------------
++## Use Swig to generate a literal binding to the C++ API
++##------------------------------------------------------
++SET(CMAKE_SWIG_FLAGS "-w401")
++SET(QPID_INCLUDES "-I${qpid-cpp_SOURCE_DIR}/include")
++SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/php.i PROPERTIES CPLUSPLUS ON)
++SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/php.i PROPERTIES SWIG_FLAGS "${QPID_INCLUDES}")
++SET(SWIG_MODULE_cqmf2_php_EXTRA_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/../qmf2.ini)
++SET(SWIG_MODULE_cqmf2_php_EXTRA_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/../../qpid/php/phpinfo.i)
++SET(SWIG_MODULE_cqmf2_php_EXTRA_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/../../swig_php_typemaps.i)
++
++SWIG_ADD_MODULE(cqmf2_php php ${CMAKE_CURRENT_SOURCE_DIR}/php.i ${CMAKE_CURRENT_BINARY_DIR}/cqmf2_php_prebuild)
++SWIG_LINK_LIBRARIES(cqmf2_php qmf2)
++
++SET_SOURCE_FILES_PROPERTIES(
++  ${swig_generated_file_fullname} PROPERTIES COMPILE_FLAGS "${PHP_INCLUDES} ${QPID_INCLUDES}"
++)
++
++##----------------------------------------------------------------------
++## Cleanup some of the global indentifiers in the generated C++ code and
++## replace the deprecated zend_noreturn (if present) with zend_error
++##----------------------------------------------------------------------
++ADD_CUSTOM_COMMAND(
++  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cqmf2_php_prebuild
++  COMMAND sed -i -e "s/\\\\\\(qmf_\\\\w*\\\\\\)_qmf/\\\\1/g"
++                 -e "s/zend_error_noreturn/zend_error/g" ${swig_generated_file_fullname}
++  COMMAND touch cqmf2_php_prebuild
++  DEPENDS ${swig_generated_file_fullname}
++)
++
++##--------------------------------------------------------------
++## Cleanup some of the indentifiers in the generated PHP wrapper
++##--------------------------------------------------------------
++ADD_CUSTOM_COMMAND(
++  TARGET ${SWIG_MODULE_cqmf2_php_REAL_NAME}
++  POST_BUILD
++  COMMAND
++    sed -i -e "s/\\\\\\(qmf_\\\\w*\\\\\\)_qmf/\\\\1/g"
++           -e "s/\\\\\\(class\\\\\\|extends\\\\\\|function\\\\\\|new\\\\\\) qmf_/\\\\1 /g"
++           -e "s/const qmf_/const /g"
++        ${CMAKE_CURRENT_BINARY_DIR}/cqmf2.php
++  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cqmf2.php
++)
++
++##----------------------------------------------------------------
++## If PHP 5.3+ add the qpid\messaging namespace to the PHP wrapper
++##----------------------------------------------------------------
++if (PHP_VERNUM LESS 50300)
++  # do nothing.
++else (PHP_VERSION >= 50300)
++  ADD_CUSTOM_COMMAND(
++    TARGET ${SWIG_MODULE_cqmf2_php_REAL_NAME}
++    POST_BUILD
++    COMMAND sed -i -e "s/^\\<?php/\\<?php namespace qmf\;/" ${CMAKE_CURRENT_BINARY_DIR}/cqmf2.php
++    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cqmf2.php
++  )
++endif (PHP_VERNUM LESS 50300)
++
++##------------------------------
++## Generate a basic PHP INI file
++##------------------------------
++FILE(
++  WRITE ${CMAKE_CURRENT_SOURCE_DIR}/cqmf2.ini
++    "; configuration for PHP QMF2 module\nextension=${PHP_EXTENSION_DIR}/cqmf2${CMAKE_SHARED_LIBRARY_SUFFIX}\n"
++)
++
++##-------------------------------
++## Install the dynamic PHP module
++##-------------------------------
++GET_TARGET_PROPERTY(PHP_SHARED_LIBRARY_LOCATION ${SWIG_MODULE_cqmf2_php_REAL_NAME} LOCATION)
++INSTALL(
++  FILES ${PHP_SHARED_LIBRARY_LOCATION}
++  RENAME cqmf2${CMAKE_SHARED_LIBRARY_SUFFIX}
++  DESTINATION ${PHP_EXTENSION_DIR}
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++
++##-------------------------------
++## Install the basic PHP INI file
++##-------------------------------
++INSTALL(
++  FILES ${CMAKE_CURRENT_BINARY_DIR}/cqmf2.ini
++  DESTINATION ${PHP_CONFIG_DIR}
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++
++##--------------------------------------
++## Install the static PHP extension code
++##--------------------------------------
++INSTALL(
++  FILES ${swig_generated_file_fullname}
++  DESTINATION ${PHP_INCLUDE_DIR}/ext/qpid
++  RENAME cqmf2.cpp
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++INSTALL(
++  FILES ${CMAKE_CURRENT_BINARY_DIR}/php_cqmf2.h
++  DESTINATION ${PHP_INCLUDE_DIR}/ext/qpid
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++
++##-----------------------------------------
++## Optionally install the PHP class wrapper
++##-----------------------------------------
++if (PHP_EXECUTABLE)
++  execute_process(
++    COMMAND
++      ${PHP_EXECUTABLE} -r "print get_include_path();"
++    COMMAND
++      sed -ne "s/\\(\\.:\\)\\?\\(\\/[^:]*\\).*/\\2/p"
++      OUTPUT_VARIABLE PHP_WRAPPER_DIR
++  )
++
++  if (PHP_WRAPPER_DIR)
++    INSTALL(
++      FILES ${CMAKE_CURRENT_BINARY_DIR}/cqmf2.php
++      DESTINATION ${PHP_WRAPPER_DIR}
++      COMPONENT ${QPID_COMPONENT_CLIENT}
++    )
++  endif (PHP_WRAPPER_DIR)
++endif (PHP_EXECUTABLE)
+\ No newline at end of file
+Index: qpid/cpp/bindings/qmf2/php/php.i
+===================================================================
+--- qpid/cpp/bindings/qmf2/php/php.i	(revision 0)
++++ qpid/cpp/bindings/qmf2/php/php.i	(revision 0)
 @@ -0,0 +1,90 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -179,10 +315,10 @@ Index: cpp/bindings/qmf2/php/php.i
 +%include "../qmf2.i"
 +
 +// End of php.i
-Index: cpp/bindings/qmf2/Makefile.am
+Index: qpid/cpp/bindings/qmf2/Makefile.am
 ===================================================================
---- cpp/bindings/qmf2/Makefile.am	(revision 1086164)
-+++ cpp/bindings/qmf2/Makefile.am	(working copy)
+--- qpid/cpp/bindings/qmf2/Makefile.am	(revision 1092659)
++++ qpid/cpp/bindings/qmf2/Makefile.am	(working copy)
 @@ -30,4 +30,8 @@
  SUBDIRS += python
  endif
@@ -192,10 +328,46 @@ Index: cpp/bindings/qmf2/Makefile.am
  endif
 +
 +endif
-Index: cpp/bindings/qmf2/examples/php/cli/list_agents.php
+Index: qpid/cpp/bindings/qmf2/CMakeLists.txt
 ===================================================================
---- cpp/bindings/qmf2/examples/php/cli/list_agents.php	(revision 0)
-+++ cpp/bindings/qmf2/examples/php/cli/list_agents.php	(revision 0)
+--- qpid/cpp/bindings/qmf2/CMakeLists.txt	(revision 0)
++++ qpid/cpp/bindings/qmf2/CMakeLists.txt	(revision 0)
+@@ -0,0 +1,31 @@
++#
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
++#
++#   http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
++#
++
++
++include(FindSWIG)
++include(UseSWIG)
++include(FindPHPDev)
++
++if (SWIG_FOUND)
++    #set(CMAKE_SWIG_FLAGS "-w361,362,401,467,503")
++
++    if (PHPDEV_FOUND)
++        add_subdirectory(php)
++    endif (PHPDEV_FOUND)
++endif (SWIG_FOUND)
+Index: qpid/cpp/bindings/qmf2/examples/php/cli/list_agents.php
+===================================================================
+--- qpid/cpp/bindings/qmf2/examples/php/cli/list_agents.php	(revision 0)
++++ qpid/cpp/bindings/qmf2/examples/php/cli/list_agents.php	(revision 0)
 @@ -0,0 +1,61 @@
 +<?php
 +/*
@@ -258,11 +430,11 @@ Index: cpp/bindings/qmf2/examples/php/cli/list_agents.php
 +    exit(1);
 +}
 +?>
-Index: cpp/bindings/swig_php_typemaps.i
+Index: qpid/cpp/bindings/swig_php_typemaps.i
 ===================================================================
---- cpp/bindings/swig_php_typemaps.i	(revision 0)
-+++ cpp/bindings/swig_php_typemaps.i	(revision 0)
-@@ -0,0 +1,455 @@
+--- qpid/cpp/bindings/swig_php_typemaps.i	(revision 0)
++++ qpid/cpp/bindings/swig_php_typemaps.i	(revision 0)
+@@ -0,0 +1,465 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -598,8 +770,18 @@ Index: cpp/bindings/swig_php_typemaps.i
 +
 +%apply int                {   int8_t,  int16_t,  int32_t };
 +%apply unsigned int       {  uint8_t, uint16_t, uint32_t };
-+%apply long long          {                      int64_t };
-+%apply unsigned long long {                     uint64_t };
++
++#ifdef long long
++%apply long long          {  int64_t                     };
++#else
++%apply int                {  int64_t                     };
++#endif
++
++#ifdef unsigned long long
++%apply unsigned long long { uint64_t                     };
++#else
++%apply unsigned int       { uint64_t                     };
++#endif
 +
 +/*
 + * Map Qpid Variants to PHP values.
@@ -718,22 +900,10 @@ Index: cpp/bindings/swig_php_typemaps.i
 +}
 +
 +// End of swig_php_typemaps.i
-
-Property changes on: cpp/bindings/qpid/php
-___________________________________________________________________
-Added: svn:ignore
-   + .deps
-cqpid.cpp
-cqpid.ini
-cqpid.php
-Makefile.in
-php_cqpid.h
-
-
-Index: cpp/bindings/qpid/php/Makefile.am
+Index: qpid/cpp/bindings/qpid/php/Makefile.am
 ===================================================================
---- cpp/bindings/qpid/php/Makefile.am	(revision 0)
-+++ cpp/bindings/qpid/php/Makefile.am	(revision 0)
+--- qpid/cpp/bindings/qpid/php/Makefile.am	(revision 0)
++++ qpid/cpp/bindings/qpid/php/Makefile.am	(revision 0)
 @@ -0,0 +1,71 @@
 +#
 +# Licensed to the Apache Software Foundation (ASF) under one
@@ -806,10 +976,10 @@ Index: cpp/bindings/qpid/php/Makefile.am
 +CLEANFILES = $(SWIG_OUTPUT) $(PHP_INI_FILE)
 +
 +endif # HAVE_PHP_DEVEL
-Index: cpp/bindings/qpid/php/phpinfo.i
+Index: qpid/cpp/bindings/qpid/php/phpinfo.i
 ===================================================================
---- cpp/bindings/qpid/php/phpinfo.i	(revision 0)
-+++ cpp/bindings/qpid/php/phpinfo.i	(revision 0)
+--- qpid/cpp/bindings/qpid/php/phpinfo.i	(revision 0)
++++ qpid/cpp/bindings/qpid/php/phpinfo.i	(revision 0)
 @@ -0,0 +1,80 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -891,10 +1061,155 @@ Index: cpp/bindings/qpid/php/phpinfo.i
 +%}
 +
 +// End of phpinfo.i
-Index: cpp/bindings/qpid/php/php.i
+Index: qpid/cpp/bindings/qpid/php/CMakeLists.txt
 ===================================================================
---- cpp/bindings/qpid/php/php.i	(revision 0)
-+++ cpp/bindings/qpid/php/php.i	(revision 0)
+--- qpid/cpp/bindings/qpid/php/CMakeLists.txt	(revision 0)
++++ qpid/cpp/bindings/qpid/php/CMakeLists.txt	(revision 0)
+@@ -0,0 +1,139 @@
++#
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
++#
++#   http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
++#
++
++##------------------------------------------------------
++## Use Swig to generate a literal binding to the C++ API
++##------------------------------------------------------
++SET(CMAKE_SWIG_FLAGS "-w401")
++SET(QPID_INCLUDES "-I${qpid-cpp_SOURCE_DIR}/include")
++SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/php.i PROPERTIES CPLUSPLUS ON)
++SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/php.i PROPERTIES SWIG_FLAGS "${QPID_INCLUDES}")
++SET(SWIG_MODULE_cqpid_php_EXTRA_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/phpinfo.i)
++SET(SWIG_MODULE_cqpid_php_EXTRA_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/../../swig_php_typemaps.i)
++
++SWIG_ADD_MODULE(cqpid_php php ${CMAKE_CURRENT_SOURCE_DIR}/php.i ${CMAKE_CURRENT_BINARY_DIR}/cqpid_php_prebuild)
++SWIG_LINK_LIBRARIES(cqpid_php qpidmessaging qpidtypes)
++
++SET_SOURCE_FILES_PROPERTIES(
++  ${swig_generated_file_fullname} PROPERTIES COMPILE_FLAGS "${PHP_INCLUDES} ${QPID_INCLUDES}"
++)
++
++##----------------------------------------------------------------------
++## Cleanup some of the global indentifiers in the generated C++ code and
++## replace the deprecated zend_noreturn (if present) with zend_error
++##----------------------------------------------------------------------
++ADD_CUSTOM_COMMAND(
++  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cqpid_php_prebuild
++  COMMAND sed -i -e "s/\\\\\\(qpid_messaging_\\\\w*\\\\\\)_qpid_messaging/\\\\1/g"
++                 -e "s/zend_error_noreturn/zend_error/g" ${swig_generated_file_fullname}
++  COMMAND touch cqpid_php_prebuild
++  DEPENDS ${swig_generated_file_fullname}
++)
++
++##--------------------------------------------------------------
++## Cleanup some of the indentifiers in the generated PHP wrapper
++##--------------------------------------------------------------
++ADD_CUSTOM_COMMAND(
++  TARGET ${SWIG_MODULE_cqpid_php_REAL_NAME}
++  POST_BUILD
++  COMMAND
++    sed -i -e "s/\\\\\\(qpid_messaging_\\\\w*\\\\\\)_qpid_messaging/\\\\1/g"
++           -e "s/\\\\\\(class\\\\\\|extends\\\\\\|function\\\\\\|new\\\\\\) qpid_messaging_/\\\\1 /g"
++           -e "s/^\\\\\\(\\\\s*\\\\\\)\\\\\\(static function \\\\\\(FOREVER\\\\\\|IMMEDIATE\\\\\\|SECOND\\\\\\|MINUTE\\\\\\)\\(\\)\\\\\\)/\\\\1const \\\\3 = QPID_MESSAGING_DURATION_\\\\3\; \\\\2/"
++        ${CMAKE_CURRENT_BINARY_DIR}/cqpid.php
++  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cqpid.php
++)
++
++##----------------------------------------------------------------
++## If PHP 5.3+ add the qpid\messaging namespace to the PHP wrapper
++##----------------------------------------------------------------
++if (PHP_VERNUM LESS 50300)
++  # do nothing.
++else (PHP_VERSION >= 50300)
++  ADD_CUSTOM_COMMAND(
++    TARGET ${SWIG_MODULE_cqpid_php_REAL_NAME}
++    POST_BUILD
++    COMMAND sed -i -e "s/^\\<?php/\\<?php namespace qpid\\\\\\\\messaging\;/" ${CMAKE_CURRENT_BINARY_DIR}/cqpid.php
++    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cqpid.php
++  )
++endif (PHP_VERNUM LESS 50300)
++
++##------------------------------
++## Generate a basic PHP INI file
++##------------------------------
++FILE(
++  WRITE ${CMAKE_CURRENT_SOURCE_DIR}/cqpid.ini
++    "; configuration for PHP Qpid module\nextension=${PHP_EXTENSION_DIR}/cqpid${CMAKE_SHARED_LIBRARY_SUFFIX}\n"
++)
++
++##-------------------------------
++## Install the dynamic PHP module
++##-------------------------------
++GET_TARGET_PROPERTY(PHP_SHARED_LIBRARY_LOCATION ${SWIG_MODULE_cqpid_php_REAL_NAME} LOCATION)
++INSTALL(
++  FILES ${PHP_SHARED_LIBRARY_LOCATION}
++  RENAME cqpid${CMAKE_SHARED_LIBRARY_SUFFIX}
++  DESTINATION ${PHP_EXTENSION_DIR}
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++
++##-------------------------------
++## Install the basic PHP INI file
++##-------------------------------
++INSTALL(
++  FILES ${CMAKE_CURRENT_BINARY_DIR}/cqpid.ini
++  DESTINATION ${PHP_CONFIG_DIR}
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++
++##--------------------------------------
++## Install the static PHP extension code
++##--------------------------------------
++INSTALL(
++  FILES ${swig_generated_file_fullname}
++  DESTINATION ${PHP_INCLUDE_DIR}/ext/qpid
++  RENAME cqpid.cpp
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++INSTALL(
++  FILES ${CMAKE_CURRENT_BINARY_DIR}/php_cqpid.h
++  DESTINATION ${PHP_INCLUDE_DIR}/ext/qpid
++  COMPONENT ${QPID_COMPONENT_CLIENT}
++)
++
++##-----------------------------------------
++## Optionally install the PHP class wrapper
++##-----------------------------------------
++if (PHP_EXECUTABLE)
++  execute_process(
++    COMMAND
++      ${PHP_EXECUTABLE} -r "print get_include_path();"
++    COMMAND
++      sed -ne "s/\\(\\.:\\)\\?\\(\\/[^:]*\\).*/\\2/p"
++      OUTPUT_VARIABLE PHP_WRAPPER_DIR
++  )
++
++  if (PHP_WRAPPER_DIR)
++    INSTALL(
++      FILES ${CMAKE_CURRENT_BINARY_DIR}/cqpid.php
++      DESTINATION ${PHP_WRAPPER_DIR}
++      COMPONENT ${QPID_COMPONENT_CLIENT}
++    )
++  endif (PHP_WRAPPER_DIR)
++endif (PHP_EXECUTABLE)
+\ No newline at end of file
+Index: qpid/cpp/bindings/qpid/php/php.i
+===================================================================
+--- qpid/cpp/bindings/qpid/php/php.i	(revision 0)
++++ qpid/cpp/bindings/qpid/php/php.i	(revision 0)
 @@ -0,0 +1,132 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -1028,10 +1343,10 @@ Index: cpp/bindings/qpid/php/php.i
 +%}
 +
 +// End of php.i
-Index: cpp/bindings/qpid/Makefile.am
+Index: qpid/cpp/bindings/qpid/Makefile.am
 ===================================================================
---- cpp/bindings/qpid/Makefile.am	(revision 1086164)
-+++ cpp/bindings/qpid/Makefile.am	(working copy)
+--- qpid/cpp/bindings/qpid/Makefile.am	(revision 1092659)
++++ qpid/cpp/bindings/qpid/Makefile.am	(working copy)
 @@ -35,4 +35,8 @@
  SUBDIRS += perl
  endif
@@ -1041,10 +1356,31 @@ Index: cpp/bindings/qpid/Makefile.am
  endif
 +
 +endif
-Index: cpp/bindings/qpid/examples/php/cli/hello_world.php
+Index: qpid/cpp/bindings/qpid/CMakeLists.txt
 ===================================================================
---- cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
-+++ cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
+--- qpid/cpp/bindings/qpid/CMakeLists.txt	(revision 1092659)
++++ qpid/cpp/bindings/qpid/CMakeLists.txt	(working copy)
+@@ -23,6 +23,7 @@
+ include(FindRuby)
+ include(FindPythonLibs)
+ include(FindPerlLibs)
++include(FindPHPDev)
+ 
+ if (SWIG_FOUND)
+     set(CMAKE_SWIG_FLAGS "-w361,362,401,467,503")
+@@ -38,4 +39,8 @@
+     if (PERLLIBS_FOUND)
+         add_subdirectory(perl)
+     endif (PERLLIBS_FOUND)
++
++    if (PHPDEV_FOUND)
++        add_subdirectory(php)
++    endif (PHPDEV_FOUND)
+ endif (SWIG_FOUND)
+Index: qpid/cpp/bindings/qpid/examples/php/cli/hello_world.php
+===================================================================
+--- qpid/cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
++++ qpid/cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
 @@ -0,0 +1,52 @@
 +<?php
 +/*
@@ -1098,10 +1434,10 @@ Index: cpp/bindings/qpid/examples/php/cli/hello_world.php
 +    exit(1);
 +}
 +?>
-Index: cpp/bindings/qpid/examples/php/cli/map_sender.php
+Index: qpid/cpp/bindings/qpid/examples/php/cli/map_sender.php
 ===================================================================
---- cpp/bindings/qpid/examples/php/cli/map_sender.php	(revision 0)
-+++ cpp/bindings/qpid/examples/php/cli/map_sender.php	(revision 0)
+--- qpid/cpp/bindings/qpid/examples/php/cli/map_sender.php	(revision 0)
++++ qpid/cpp/bindings/qpid/examples/php/cli/map_sender.php	(revision 0)
 @@ -0,0 +1,57 @@
 +<?php
 +/*
@@ -1160,10 +1496,10 @@ Index: cpp/bindings/qpid/examples/php/cli/map_sender.php
 +}
 +exit(1);
 +?>
-Index: cpp/bindings/qpid/examples/php/cli/client.php
+Index: qpid/cpp/bindings/qpid/examples/php/cli/client.php
 ===================================================================
---- cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
-+++ cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
+--- qpid/cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
++++ qpid/cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
 @@ -0,0 +1,64 @@
 +<?php
 +/*
@@ -1229,10 +1565,10 @@ Index: cpp/bindings/qpid/examples/php/cli/client.php
 +}
 +exit(1);
 +?>
-Index: cpp/bindings/qpid/examples/php/cli/map_receiver.php
+Index: qpid/cpp/bindings/qpid/examples/php/cli/map_receiver.php
 ===================================================================
---- cpp/bindings/qpid/examples/php/cli/map_receiver.php	(revision 0)
-+++ cpp/bindings/qpid/examples/php/cli/map_receiver.php	(revision 0)
+--- qpid/cpp/bindings/qpid/examples/php/cli/map_receiver.php	(revision 0)
++++ qpid/cpp/bindings/qpid/examples/php/cli/map_receiver.php	(revision 0)
 @@ -0,0 +1,47 @@
 +<?php
 +/*
@@ -1281,10 +1617,10 @@ Index: cpp/bindings/qpid/examples/php/cli/map_receiver.php
 +}
 +exit(1);
 +?>
-Index: cpp/bindings/qpid/examples/php/cli/server.php
+Index: qpid/cpp/bindings/qpid/examples/php/cli/server.php
 ===================================================================
---- cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
-+++ cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
+--- qpid/cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
++++ qpid/cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
 @@ -0,0 +1,61 @@
 +<?php
 +/*
@@ -1347,10 +1683,10 @@ Index: cpp/bindings/qpid/examples/php/cli/server.php
 +}
 +exit(1);
 +?>
-Index: cpp/bindings/qpid/examples/php/web/hello_world.php
+Index: qpid/cpp/bindings/qpid/examples/php/web/hello_world.php
 ===================================================================
---- cpp/bindings/qpid/examples/php/web/hello_world.php	(revision 0)
-+++ cpp/bindings/qpid/examples/php/web/hello_world.php	(revision 0)
+--- qpid/cpp/bindings/qpid/examples/php/web/hello_world.php	(revision 0)
++++ qpid/cpp/bindings/qpid/examples/php/web/hello_world.php	(revision 0)
 @@ -0,0 +1,100 @@
 +<?php
 +/*
@@ -1452,10 +1788,10 @@ Index: cpp/bindings/qpid/examples/php/web/hello_world.php
 + </body>
 +</html>
 +<?php } ?>
-Index: cpp/configure.ac
+Index: qpid/cpp/configure.ac
 ===================================================================
---- cpp/configure.ac	(revision 1086164)
-+++ cpp/configure.ac	(working copy)
+--- qpid/cpp/configure.ac	(revision 1092659)
++++ qpid/cpp/configure.ac	(working copy)
 @@ -228,7 +228,74 @@
  fi
  AM_CONDITIONAL([HAVE_PYTHON_DEVEL], [test -f $PYTHON_INC/Python.h && test -n "$SWIG"])
@@ -1547,3 +1883,15 @@ Index: cpp/configure.ac
    bindings/qmf2/examples/cpp/Makefile
    managementgen/Makefile
    etc/Makefile
+Index: qpid/cpp/CMakeLists.txt
+===================================================================
+--- qpid/cpp/CMakeLists.txt	(revision 1092659)
++++ qpid/cpp/CMakeLists.txt	(working copy)
+@@ -80,6 +80,7 @@
+ add_subdirectory(managementgen)
+ add_subdirectory(etc)
+ add_subdirectory(src)
++add_subdirectory(bindings/qmf2)
+ add_subdirectory(bindings/qpid)
+ add_subdirectory(docs/api)
+ # add_subdirectory(docs/man)

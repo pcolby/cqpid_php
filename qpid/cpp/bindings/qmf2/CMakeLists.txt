@@ -20,25 +20,10 @@
 
 include(FindSWIG)
 include(UseSWIG)
-include(FindRuby)
-include(FindPythonLibs)
-include(FindPerlLibs)
 include(FindPHPDev)
 
 if (SWIG_FOUND)
-    set(CMAKE_SWIG_FLAGS "-w361,362,401,467,503")
-
-    if (PYTHONLIBS_FOUND)
-        add_subdirectory(python)
-    endif (PYTHONLIBS_FOUND)
-
-    if (RUBY_FOUND)
-        add_subdirectory(ruby)
-    endif (RUBY_FOUND)
-
-    if (PERLLIBS_FOUND)
-        add_subdirectory(perl)
-    endif (PERLLIBS_FOUND)
+    #set(CMAKE_SWIG_FLAGS "-w361,362,401,467,503")
 
     if (PHPDEV_FOUND)
         add_subdirectory(php)

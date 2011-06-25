@@ -333,8 +333,18 @@
 
 %apply int                {   int8_t,  int16_t,  int32_t };
 %apply unsigned int       {  uint8_t, uint16_t, uint32_t };
-%apply long long          {                      int64_t };
-%apply unsigned long long {                     uint64_t };
+
+#ifdef long long
+%apply long long          {  int64_t                     };
+#else
+%apply int                {  int64_t                     };
+#endif
+
+#ifdef unsigned long long
+%apply unsigned long long { uint64_t                     };
+#else
+%apply unsigned int       { uint64_t                     };
+#endif
 
 /*
  * Map Qpid Variants to PHP values.

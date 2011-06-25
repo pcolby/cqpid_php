@@ -27,7 +27,6 @@ SWIG_OUTPUT = cqmf2.cpp cqmf2.php php_cqmf2.h
 SWIG_FLAGS = -w401
 PHP_QPID_VERSION = -DPHP_QPID_VERSION='"$(VERSION)"'
 
-#                  -e 's/const qmf_/const /g' 
 
 $(SWIG_OUTPUT): $(srcdir)/php.i $(srcdir)/../../qpid/php/phpinfo.i $(srcdir)/../qmf2.i $(srcdir)/../../swig_php_typemaps.i
 	$(SWIG) -c++ -php $(SWIG_FLAGS) $(INCLUDES) $(QPID_CXXFLAGS) -o cqmf2.cpp $(srcdir)/php.i
@@ -35,7 +34,7 @@ $(SWIG_OUTPUT): $(srcdir)/php.i $(srcdir)/../../qpid/php/phpinfo.i $(srcdir)/../
 	          -e 's/zend_error_noreturn/zend_error/g' cqmf2.cpp
 	$(SED) -i -e 's/\(qmf_\w*\)_qmf/\1/g' \
 	          -e 's/\(class\|extends\|function\|new\) qmf_/\1 /g' \
-                  -e 's/const qmf_/const /g' \
+	          -e 's/const qmf_/const /g' \
 		cqmf2.php
 	if test $(PHP_VERSION) -ge 50300; then \
 		$(SED) -i -e 's/^<?php/<?php namespace qmf;/' cqmf2.php; \

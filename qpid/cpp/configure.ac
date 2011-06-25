@@ -228,6 +228,73 @@ if test -n "$PYTHON" ; then
 fi
 AM_CONDITIONAL([HAVE_PYTHON_DEVEL], [test -f $PYTHON_INC/Python.h && test -n "$SWIG"])
 
+# PHP bindings.
+
+AC_ARG_VAR(PHP_VERSION, [PHP version number])
+AC_ARG_VAR(PHP_DEV_INCLUDES, [List of PHP development includes])
+AC_ARG_VAR(PHP_EXTENSION_DIR, [Directory to install loadable PHP extension to])
+AC_ARG_VAR(PHP_INCLUDE_DIR, [Directory to install static PHP extension header to])
+AC_ARG_VAR(PHP_WRAPPER_DIR, [Directory to install PHP class wrapper to])
+AC_ARG_VAR(PHP_CONFIG_DIR,  [Directory to install PHP ini file to])
+
+AC_CHECK_PROG([PHP], [php], [php])
+AC_CHECK_PROG([PHP_CONFIG], [php-config], [php-config])
+
+# Get details from $(PHP_CONFIG), falling back to $(PHP) if possible.
+if test -n "$PHP_CONFIG" ; then
+    if test -z "$PHP_VERSION" ; then
+        AC_MSG_CHECKING([for PHP version number])
+        PHP_VERSION=`"$PHP_CONFIG" --vernum`
+        AC_SUBST(PHP_VERSION)
+        AC_MSG_RESULT([$PHP_VERSION])
+    fi
+
+    if test -z "$PHP_DEV_INCLUDES" ; then
+        AC_MSG_CHECKING([for PHP development includes])
+        PHP_DEV_INCLUDES=`"$PHP_CONFIG" --includes`
+        AC_SUBST(PHP_DEV_INCLUDES)
+        AC_MSG_RESULT([$PHP_DEV_INCLUDES])
+    fi
+
+    if test -z "$PHP_EXTENSION_DIR" ; then
+        AC_MSG_CHECKING([for directory to install loadable PHP extension to])
+        PHP_EXTENSION_DIR=`$PHP_CONFIG --extension-dir`
+        if test -z "$PHP_EXTENSION_DIR" && test -n "$PHP" ; then
+            PHP_EXTENSION_DIR=`"$PHP" -r 'phpinfo();' | "$SED" -ne 's/^extension_dir\s\+=>\s\+\(.*\)\s\+=>.*$/\1/p'`
+        fi
+        AC_SUBST(PHP_EXTENSION_DIR)
+        AC_MSG_RESULT([$PHP_EXTENSION_DIR])
+    fi
+
+    if test -z "$PHP_INCLUDE_DIR" ; then
+        AC_MSG_CHECKING([for directory to install static PHP extension header to])
+        PHP_INCLUDE_DIR=`"$PHP_CONFIG" --include-dir`
+        AC_SUBST(PHP_INCLUE_DIR)
+        AC_MSG_RESULT([$PHP_INCLUDE_DIR])
+    fi
+
+    if test -z "$PHP_CONFIG_DIR" ; then
+        AC_MSG_CHECKING([for directory to install PHP ini file to])
+        PHP_CONFIG_DIR=`"$PHP_CONFIG" --configure-options | "$SED" -ne 's/^.*--with-config-file-scan-dir=\([[^ ]]*\).*/\1/p'`
+        AC_SUBST(PHP_INCLUE_DIR)
+        AC_MSG_RESULT([$PHP_INCLUDE_DIR])
+    fi
+fi
+
+# Get details only available from $(PHP), and not $(PHP_CONFIG).
+if test -n "$PHP" ; then
+    if test -z "$PHP_WRAPPER_DIR" ; then
+        AC_MSG_CHECKING([for directory to install PHP class wrapper to])
+        PHP_WRAPPER_DIR=`"$PHP" -r 'print get_include_path();' | "$SED" -ne 's/\(\.:\)\?\(\/[[^:]]*\).*/\2/p'`
+        AC_SUBST(PHP_WRAPPER_DIR)
+        AC_MSG_RESULT([$PHP_WRAPPER_DIR])
+    fi
+fi
+
+AM_CONDITIONAL([HAVE_PHP_DEVEL], [test -n "$PHP_DEV_INCLUDES" && test -n "$SWIG"])
+AM_CONDITIONAL([HAVE_PHP_DYNAMIC_INSTALL], [test -n "$PHP_EXTENSION_DIR" && test -n "$PHP_CONFIG_DIR"])
+AM_CONDITIONAL([HAVE_PHP_STATIC_INSTALL],  [test -n "$PHP_INCLUDE_DIR"])
+AM_CONDITIONAL([HAVE_PHP_WRAPPER_INSTALL], [test -n "$PHP_WRAPPER_DIR"])
 
 # Perl bindings:
 
@@ -538,6 +605,7 @@ AC_CONFIG_FILES([
   bindings/qpid/Makefile
   bindings/qpid/ruby/Makefile
   bindings/qpid/python/Makefile
+  bindings/qpid/php/Makefile
   bindings/qpid/perl/Makefile
   bindings/qpid/dotnet/Makefile
   bindings/qmf/Makefile
@@ -547,6 +615,7 @@ AC_CONFIG_FILES([
   bindings/qmf2/Makefile
   bindings/qmf2/ruby/Makefile
   bindings/qmf2/python/Makefile
+  bindings/qmf2/php/Makefile
   bindings/qmf2/examples/cpp/Makefile
   managementgen/Makefile
   etc/Makefile
