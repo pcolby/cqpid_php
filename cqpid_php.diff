@@ -187,7 +187,7 @@ Index: cpp/bindings/swig_php_typemaps.i
 +        const int type = zend_hash_get_current_key_ex(hashTable, &key, &keyLength, &index, 0, hashPosition);
 +        switch (type) {
 +            case HASH_KEY_IS_STRING:
-+                return std::string(key, keyLength);
++                return std::string(key, keyLength-1);
 +            case HASH_KEY_IS_LONG: {
 +                    std::stringstream stream;
 +                    stream << index;
@@ -457,16 +457,95 @@ Index: cpp/bindings/swig_php_typemaps.i
 Property changes on: cpp/bindings/qpid/php
 ___________________________________________________________________
 Added: svn:ignore
-   + cqpid.cpp
+   + .deps
+cqpid.cpp
+cqpid.ini
 cqpid.php
+Makefile.in
 php_cqpid.h
 
 
+Index: cpp/bindings/qpid/php/Makefile.am
+===================================================================
+--- cpp/bindings/qpid/php/Makefile.am	(revision 0)
++++ cpp/bindings/qpid/php/Makefile.am	(revision 0)
+@@ -0,0 +1,71 @@
++#
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
++#
++#   http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
++#
++
++if HAVE_PHP_DEVEL
++
++INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
++
++PHP_INI_FILE = cqpid.ini
++EXTRA_DIST = php.i phpinfo.i cqpid.php $(PHP_INI_FILE)
++SWIG_OUTPUT = cqpid.cpp cqpid.php php_cqpid.h
++SWIG_FLAGS = -w401
++PHP_QPID_VERSION = -DPHP_QPID_VERSION='"$(VERSION)"'
++
++$(SWIG_OUTPUT): $(srcdir)/php.i $(srcdir)/phpinfo.i $(srcdir)/../qpid.i $(srcdir)/../../swig_php_typemaps.i
++	$(SWIG) -c++ -php $(SWIG_FLAGS) $(INCLUDES) $(QPID_CXXFLAGS) -o cqpid.cpp $(srcdir)/php.i
++	$(SED) -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g' \
++	          -e 's/zend_error_noreturn/zend_error/g' cqpid.cpp
++	$(SED) -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g' \
++	          -e 's/\(class\|function\|new\) qpid_messaging_/\1 /g' \
++	          -e 's/\(static function \(FOREVER\|IMMEDIATE\|SECOND\|MINUTE\)()\)/const \2 = QPID_MESSAGING_DURATION_\2; \1/' \
++		cqpid.php
++	if test $(PHP_VERSION) -ge 50300; then \
++		$(SED) -i -e 's/^<?php/<?php namespace qpid\\messaging;/' cqpid.php; \
++	fi
++
++$(PHP_INI_FILE): cqpid.la
++	echo '; configuration for PHP Qpid module' > $(PHP_INI_FILE)
++	echo "extension=$(PHP_EXTENSION_DIR)/"`$(SED) -ne "s/^dlname='\(.*\)'/\1/p" cqpid.la` >> $(PHP_INI_FILE)
++
++if HAVE_PHP_DYNAMIC_INSTALL
++phplibarchdir = $(PHP_EXTENSION_DIR)
++phplibarch_LTLIBRARIES = cqpid.la
++cqpid_la_LDFLAGS = -avoid-version -module -shared
++cqpid_la_LIBADD = -L$(top_builddir)/src/.libs -lqpidmessaging -lqpidtypes \
++	$(top_builddir)/src/libqpidmessaging.la $(top_builddir)/src/libqpidtypes.la
++cqpid_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION)
++nodist_cqpid_la_SOURCES = cqpid.cpp
++cqpid_confdir = $(PHP_CONFIG_DIR)
++cqpid_conf_DATA = $(PHP_INI_FILE)
++endif
++
++if HAVE_PHP_STATIC_INSTALL
++cqpid_staticdir = $(PHP_INCLUDE_DIR)
++cqpid_static_DATA = cqpid.cpp
++cqpid_static_HEADERS = php_cqpid.h
++endif
++
++if HAVE_PHP_WRAPPER_INSTALL
++cqpid_wrapperdir = $(PHP_WRAPPER_DIR)
++cqpid_wrapper_DATA = cqpid.php
++endif
++
++CLEANFILES = $(SWIG_OUTPUT) $(PHP_INI_FILE)
++
++endif # HAVE_PHP_DEVEL
 Index: cpp/bindings/qpid/php/phpinfo.i
 ===================================================================
 --- cpp/bindings/qpid/php/phpinfo.i	(revision 0)
 +++ cpp/bindings/qpid/php/phpinfo.i	(revision 0)
-@@ -0,0 +1,77 @@
+@@ -0,0 +1,80 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -495,7 +574,10 @@ Index: cpp/bindings/qpid/php/phpinfo.i
 +%pragma(php) phpinfo = %{
 +    php_info_print_table_start();
 +
-+    // TODO: Qpid Information.
++    // Qpid Information.
++#ifdef PHP_QPID_VERSION
++    php_info_print_table_row(2, "Qpid Version", PHP_QPID_VERSION);
++#endif
 +
 +    // SWIG Information.
 +    size_t swigVersions[3] = {
@@ -685,7 +767,7 @@ Index: cpp/bindings/qpid/examples/php/cli/hello_world.php
 ===================================================================
 --- cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
 +++ cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,52 @@
 +<?php
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -714,8 +796,8 @@ Index: cpp/bindings/qpid/examples/php/cli/hello_world.php
 +$address = $argc > 2 ? $argv[2] : 'amq.topic';
 +$connectionOptions = $argc > 3 ? $argv[3] : '';
 +
-+$connection = new Connection($broker, $connectionOptions);
 +try {
++    $connection = new Connection($broker, $connectionOptions);
 +    $connection->open();
 +    $session = $connection->createSession();
 +
@@ -732,7 +814,9 @@ Index: cpp/bindings/qpid/examples/php/cli/hello_world.php
 +    exit(0);
 +} catch(\Exception $error) {
 +    print $error->getMessage() . "\n";
-+    $connection->close();
++    if (isset($connection)) {
++        $connection->close();
++    }
 +    exit(1);
 +}
 +?>
@@ -740,7 +824,7 @@ Index: cpp/bindings/qpid/examples/php/cli/map_sender.php
 ===================================================================
 --- cpp/bindings/qpid/examples/php/cli/map_sender.php	(revision 0)
 +++ cpp/bindings/qpid/examples/php/cli/map_sender.php	(revision 0)
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,57 @@
 +<?php
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -769,8 +853,8 @@ Index: cpp/bindings/qpid/examples/php/cli/map_sender.php
 +$address = $argc>2 ? $argv[2] : 'message_queue; {create: always}';
 +$connectionOptions = $argc > 3 ? $argv[3] : '';
 +
-+$connection = new Connection($url, $connectionOptions);
 +try {
++    $connection = new Connection($url, $connectionOptions);
 +    $connection->open();
 +    $session = $connection->createSession();
 +    $sender = $session->createSender($address);
@@ -792,7 +876,9 @@ Index: cpp/bindings/qpid/examples/php/cli/map_sender.php
 +    exit(0);
 +} catch(\Exception $error) {
 +    print $error->getMessage() . "\n";
-+    $connection->close();
++    if (isset($connection)) {
++        $connection->close();
++    }
 +}
 +exit(1);
 +?>
@@ -800,7 +886,7 @@ Index: cpp/bindings/qpid/examples/php/cli/client.php
 ===================================================================
 --- cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
 +++ cpp/bindings/qpid/examples/php/cli/client.php	(revision 0)
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,64 @@
 +<?php
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -828,8 +914,8 @@ Index: cpp/bindings/qpid/examples/php/cli/client.php
 +$url = $argc>1 ? $argv[1] : 'amqp:tcp:127.0.0.1:5672';
 +$connectionOptions = $argc > 2 ? $argv[2] : '';
 +
-+$connection = new Connection($url, $connectionOptions);
 +try {
++    $connection = new Connection($url, $connectionOptions);
 +    $connection->open();
 +    $session = $connection->createSession();
 +
@@ -859,7 +945,9 @@ Index: cpp/bindings/qpid/examples/php/cli/client.php
 +    exit(0);
 +} catch(\Exception $error) {
 +    print $error->getMessage() . "\n";
-+    $connection->close();
++    if (isset($connection)) {
++        $connection->close();
++    }
 +}
 +exit(1);
 +?>
@@ -867,7 +955,7 @@ Index: cpp/bindings/qpid/examples/php/cli/map_receiver.php
 ===================================================================
 --- cpp/bindings/qpid/examples/php/cli/map_receiver.php	(revision 0)
 +++ cpp/bindings/qpid/examples/php/cli/map_receiver.php	(revision 0)
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,47 @@
 +<?php
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -896,8 +984,8 @@ Index: cpp/bindings/qpid/examples/php/cli/map_receiver.php
 +$address = $argc>2 ? $argv[2] : 'message_queue; {create: always}';
 +$connectionOptions = $argc > 3 ? $argv[3] : '';
 +
-+$connection = new Connection($url, $connectionOptions);
 +try {
++    $connection = new Connection($url, $connectionOptions);
 +    $connection->open();
 +    $session = $connection->createSession();
 +    $receiver = $session->createReceiver($address);
@@ -909,7 +997,9 @@ Index: cpp/bindings/qpid/examples/php/cli/map_receiver.php
 +    exit(0);
 +} catch(\Exception $error) {
 +    print $error->getMessage() . "\n";
-+    $connection->close();
++    if (isset($connection)) {
++        $connection->close();
++    }
 +}
 +exit(1);
 +?>
@@ -917,7 +1007,7 @@ Index: cpp/bindings/qpid/examples/php/cli/server.php
 ===================================================================
 --- cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
 +++ cpp/bindings/qpid/examples/php/cli/server.php	(revision 0)
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,61 @@
 +<?php
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
@@ -945,8 +1035,8 @@ Index: cpp/bindings/qpid/examples/php/cli/server.php
 +$url = $argc>1 ? $argv[1] : 'amqp:tcp:127.0.0.1:5672';
 +$connectionOptions = $argc > 3 ? $argv[3] : '';
 +
-+$connection = new Connection($url, $connectionOptions);
 +try {
++    $connection = new Connection($url, $connectionOptions);
 +    $connection->open();
 +    $session = $connection->createSession();
 +    $receiver = $session->createReceiver('service_queue; {create: always}');
@@ -973,7 +1063,96 @@ Index: cpp/bindings/qpid/examples/php/cli/server.php
 +    exit(0);
 +} catch(\Exception $error) {
 +    print $error->getMessage() . "\n";
-+    $connection->close();
++    if (isset($connection)) {
++        $connection->close();
++    }
 +}
 +exit(1);
 +?>
+Index: cpp/configure.ac
+===================================================================
+--- cpp/configure.ac	(revision 1075699)
++++ cpp/configure.ac	(working copy)
+@@ -228,7 +228,74 @@
+ fi
+ AM_CONDITIONAL([HAVE_PYTHON_DEVEL], [test -f $PYTHON_INC/Python.h && test -n "$SWIG"])
+ 
++# PHP bindings.
+ 
++AC_ARG_VAR(PHP_VERSION, [PHP version number])
++AC_ARG_VAR(PHP_DEV_INCLUDES, [List of PHP development includes])
++AC_ARG_VAR(PHP_EXTENSION_DIR, [Directory to install loadable PHP extension to])
++AC_ARG_VAR(PHP_INCLUDE_DIR, [Directory to install static PHP extension header to])
++AC_ARG_VAR(PHP_WRAPPER_DIR, [Directory to install PHP class wrapper to])
++AC_ARG_VAR(PHP_CONFIG_DIR,  [Directory to install PHP ini file to])
++
++AC_CHECK_PROG([PHP], [php], [php])
++AC_CHECK_PROG([PHP_CONFIG], [php-config], [php-config])
++
++# Get details from $(PHP_CONFIG), falling back to $(PHP) if possible.
++if test -n "$PHP_CONFIG" ; then
++    if test -z "$PHP_VERSION" ; then
++        AC_MSG_CHECKING([for PHP version number])
++        PHP_VERSION=`"$PHP_CONFIG" --vernum`
++        AC_SUBST(PHP_VERSION)
++        AC_MSG_RESULT([$PHP_VERSION])
++    fi
++
++    if test -z "$PHP_DEV_INCLUDES" ; then
++        AC_MSG_CHECKING([for PHP development includes])
++        PHP_DEV_INCLUDES=`"$PHP_CONFIG" --includes`
++        AC_SUBST(PHP_DEV_INCLUDES)
++        AC_MSG_RESULT([$PHP_DEV_INCLUDES])
++    fi
++
++    if test -z "$PHP_EXTENSION_DIR" ; then
++        AC_MSG_CHECKING([for directory to install loadable PHP extension to])
++        PHP_EXTENSION_DIR=`$PHP_CONFIG --extension-dir`
++        if test -z "$PHP_EXTENSION_DIR" && test -n "$PHP" ; then
++            PHP_EXTENSION_DIR=`"$PHP" -r 'phpinfo();' | "$SED" -ne 's/^extension_dir\s\+=>\s\+\(.*\)\s\+=>.*$/\1/p'`
++        fi
++        AC_SUBST(PHP_EXTENSION_DIR)
++        AC_MSG_RESULT([$PHP_EXTENSION_DIR])
++    fi
++
++    if test -z "$PHP_INCLUDE_DIR" ; then
++        AC_MSG_CHECKING([for directory to install static PHP extension header to])
++        PHP_INCLUDE_DIR=`"$PHP_CONFIG" --include-dir`/ext/cqpid
++        AC_SUBST(PHP_INCLUE_DIR)
++        AC_MSG_RESULT([$PHP_INCLUDE_DIR])
++    fi
++
++    if test -z "$PHP_CONFIG_DIR" ; then
++        AC_MSG_CHECKING([for directory to install PHP ini file to])
++        PHP_CONFIG_DIR=`"$PHP_CONFIG" --configure-options | "$SED" -ne 's/^.*--with-config-file-scan-dir=\([[^ ]]*\).*/\1/p'`
++        AC_SUBST(PHP_INCLUE_DIR)
++        AC_MSG_RESULT([$PHP_INCLUDE_DIR])
++    fi
++fi
++
++# Get details only available from $(PHP), and not $(PHP_CONFIG).
++if test -n "$PHP" ; then
++    if test -z "$PHP_WRAPPER_DIR" ; then
++        AC_MSG_CHECKING([for directory to install PHP class wrapper to])
++        PHP_WRAPPER_DIR=`"$PHP" -r 'print get_include_path();' | "$SED" -ne 's/\(\.:\)\?\(\/[[^:]]*\).*/\2/p'`
++        AC_SUBST(PHP_WRAPPER_DIR)
++        AC_MSG_RESULT([$PHP_WRAPPER_DIR])
++    fi
++fi
++
++AM_CONDITIONAL([HAVE_PHP_DEVEL], [test -n "$PHP_DEV_INCLUDES" && test -n "$SWIG"])
++AM_CONDITIONAL([HAVE_PHP_DYNAMIC_INSTALL], [test -n "$PHP_EXTENSION_DIR" && test -n "$PHP_CONFIG_DIR"])
++AM_CONDITIONAL([HAVE_PHP_STATIC_INSTALL],  [test -n "$PHP_INCLUDE_DIR"])
++AM_CONDITIONAL([HAVE_PHP_WRAPPER_INSTALL], [test -n "$PHP_WRAPPER_DIR"])
++
+ # Perl bindings:
+ 
+ AC_CHECK_PROG([PERL], [perl], [perl])
+@@ -537,6 +604,7 @@
+   bindings/qpid/Makefile
+   bindings/qpid/ruby/Makefile
+   bindings/qpid/python/Makefile
++  bindings/qpid/php/Makefile
+   bindings/qpid/perl/Makefile
+   bindings/qpid/dotnet/Makefile
+   bindings/qmf/Makefile

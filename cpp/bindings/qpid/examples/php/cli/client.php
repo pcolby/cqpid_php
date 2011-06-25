@@ -25,8 +25,8 @@ require('cqpid.php');
 $url = $argc>1 ? $argv[1] : 'amqp:tcp:127.0.0.1:5672';
 $connectionOptions = $argc > 2 ? $argv[2] : '';
 
-$connection = new Connection($url, $connectionOptions);
 try {
+    $connection = new Connection($url, $connectionOptions);
     $connection->open();
     $session = $connection->createSession();
 
@@ -56,7 +56,9 @@ try {
     exit(0);
 } catch(\Exception $error) {
     print $error->getMessage() . "\n";
-    $connection->close();
+    if (isset($connection)) {
+        $connection->close();
+    }
 }
 exit(1);
 ?>

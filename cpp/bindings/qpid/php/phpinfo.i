@@ -26,7 +26,10 @@
 %pragma(php) phpinfo = %{
     php_info_print_table_start();
 
-    // TODO: Qpid Information.
+    // Qpid Information.
+#ifdef PHP_QPID_VERSION
+    php_info_print_table_row(2, "Qpid Version", PHP_QPID_VERSION);
+#endif
 
     // SWIG Information.
     size_t swigVersions[3] = {

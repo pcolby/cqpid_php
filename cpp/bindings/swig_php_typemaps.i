@@ -182,7 +182,7 @@
         const int type = zend_hash_get_current_key_ex(hashTable, &key, &keyLength, &index, 0, hashPosition);
         switch (type) {
             case HASH_KEY_IS_STRING:
-                return std::string(key, keyLength);
+                return std::string(key, keyLength-1);
             case HASH_KEY_IS_LONG: {
                     std::stringstream stream;
                     stream << index;

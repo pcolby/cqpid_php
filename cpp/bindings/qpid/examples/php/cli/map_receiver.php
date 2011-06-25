@@ -26,8 +26,8 @@ $url = $argc>1 ? $argv[1] : 'amqp:tcp:127.0.0.1:5672';
 $address = $argc>2 ? $argv[2] : 'message_queue; {create: always}';
 $connectionOptions = $argc > 3 ? $argv[3] : '';
 
-$connection = new Connection($url, $connectionOptions);
 try {
+    $connection = new Connection($url, $connectionOptions);
     $connection->open();
     $session = $connection->createSession();
     $receiver = $session->createReceiver($address);
@@ -39,7 +39,9 @@ try {
     exit(0);
 } catch(\Exception $error) {
     print $error->getMessage() . "\n";
-    $connection->close();
+    if (isset($connection)) {
+        $connection->close();
+    }
 }
 exit(1);
 ?>

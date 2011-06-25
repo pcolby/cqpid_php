@@ -26,8 +26,8 @@ $broker = $argc > 1 ? $argv[1] : 'localhost:5672';
 $address = $argc > 2 ? $argv[2] : 'amq.topic';
 $connectionOptions = $argc > 3 ? $argv[3] : '';
 
-$connection = new Connection($broker, $connectionOptions);
 try {
+    $connection = new Connection($broker, $connectionOptions);
     $connection->open();
     $session = $connection->createSession();
 
@@ -44,7 +44,9 @@ try {
     exit(0);
 } catch(\Exception $error) {
     print $error->getMessage() . "\n";
-    $connection->close();
+    if (isset($connection)) {
+        $connection->close();
+    }
     exit(1);
 }
 ?>
