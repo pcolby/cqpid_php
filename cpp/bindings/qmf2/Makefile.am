@@ -30,8 +30,4 @@ if HAVE_PYTHON_DEVEL
 SUBDIRS += python
 endif
 
-if HAVE_PHP_DEVEL
-SUBDIRS += php
-endif
-
 endif

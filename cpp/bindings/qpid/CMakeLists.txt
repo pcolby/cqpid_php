@@ -17,22 +17,25 @@
 # under the License.
 #
 
-SUBDIRS = dotnet
 
-if HAVE_SWIG
+include(FindSWIG)
+include(UseSWIG)
+include(FindRuby)
+include(FindPythonLibs)
+include(FindPerlLibs)
 
-EXTRA_DIST = CMakeLists.txt qpid.i
+if (SWIG_FOUND)
+    set(CMAKE_SWIG_FLAGS "-w361,362,401,467,503")
 
-if HAVE_RUBY_DEVEL
-SUBDIRS += ruby
-endif
+    if (PYTHONLIBS_FOUND)
+        add_subdirectory(python)
+    endif (PYTHONLIBS_FOUND)
 
-if HAVE_PYTHON_DEVEL
-SUBDIRS += python
-endif
+    if (RUBY_FOUND)
+        add_subdirectory(ruby)
+    endif (RUBY_FOUND)
 
-if HAVE_PERL_DEVEL
-SUBDIRS += perl
-endif
-
-endif
+    if (PERLLIBS_FOUND)
+        add_subdirectory(perl)
+    endif (PERLLIBS_FOUND)
+endif (SWIG_FOUND)
