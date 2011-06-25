@@ -106,7 +106,7 @@
 }
 
 /* Include the common Qpid SWIG interface file */
-%include </home/paul/src/qpidc-0.8/bindings/qpid/qpid.i>
+%include <../qpid.i>
 
 /* Define type-agnostic codec wrapper functions */
 %pragma(php) code = %{

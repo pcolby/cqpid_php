@@ -35,4 +35,8 @@ if HAVE_PERL_DEVEL
 SUBDIRS += perl
 endif
 
+if HAVE_PHP_DEVEL
+SUBDIRS += php
+endif
+
 endif

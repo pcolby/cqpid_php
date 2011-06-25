@@ -153,6 +153,11 @@
         }
     }
 
+    // Overloaded required by QMF2 only.
+    void mapToZval(zval * const output, const qpid::types::Variant::Map &map TSRMLS_DC) {
+        mapToZval(output, &map TSRMLS_CC);
+    }
+
     /*
      * Functions for converting from Qpid Variants to PHP variables.
      */
@@ -275,17 +280,17 @@
                     if (value < 0) {
                         if (value >= std::numeric_limits<int8_t>::min())
                             return (int8_t)value;
-                        if (value >= std::numeric_limits<int8_t>::min())
+                        if (value >= std::numeric_limits<int16_t>::min())
                             return (int16_t)value;
-                        if (value >= std::numeric_limits<int8_t>::min())
+                        if (value >= std::numeric_limits<int32_t>::min())
                             return (int32_t)value;
                         return (int64_t)value;
                     } else {
-                        if (value <= std::numeric_limits<uint8_t>::min())
+                        if (value <= std::numeric_limits<uint8_t>::max())
                             return (uint8_t)value;
-                        if (value <= std::numeric_limits<uint8_t>::min())
+                        if (value <= std::numeric_limits<uint16_t>::max())
                             return (uint16_t)value;
-                        if (value <= std::numeric_limits<uint8_t>::min())
+                        if (value <= std::numeric_limits<uint32_t>::max())
                             return (uint32_t)value;
                         return (uint64_t)value;
                     }

@@ -1,8 +1,268 @@
+
+Property changes on: cpp/bindings/qmf2/php
+___________________________________________________________________
+Added: svn:ignore
+   + cqmf2.cpp
+cqmf2.php
+php_cqmf2.h
+
+
+Index: cpp/bindings/qmf2/php/Makefile.am
+===================================================================
+--- cpp/bindings/qmf2/php/Makefile.am	(revision 0)
++++ cpp/bindings/qmf2/php/Makefile.am	(revision 0)
+@@ -0,0 +1,72 @@
++#
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
++#
++#   http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
++#
++
++if HAVE_PHP_DEVEL
++
++INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
++
++PHP_INI_FILE = cqmf2.ini
++EXTRA_DIST = php.i cqmf2.php $(PHP_INI_FILE)
++SWIG_OUTPUT = cqmf2.cpp cqmf2.php php_cqmf2.h
++SWIG_FLAGS = -w401
++PHP_QPID_VERSION = -DPHP_QPID_VERSION='"$(VERSION)"'
++
++#                  -e 's/const qmf_/const /g' 
++
++$(SWIG_OUTPUT): $(srcdir)/php.i $(srcdir)/../../qpid/php/phpinfo.i $(srcdir)/../qmf2.i $(srcdir)/../../swig_php_typemaps.i
++	$(SWIG) -c++ -php $(SWIG_FLAGS) $(INCLUDES) $(QPID_CXXFLAGS) -o cqmf2.cpp $(srcdir)/php.i
++	$(SED) -i -e 's/\(qmf_\w*\)_qmf/\1/g' \
++	          -e 's/zend_error_noreturn/zend_error/g' cqmf2.cpp
++	$(SED) -i -e 's/\(qmf_\w*\)_qmf/\1/g' \
++	          -e 's/\(class\|extends\|function\|new\) qmf_/\1 /g' \
++                  -e 's/const qmf_/const /g' \
++		cqmf2.php
++	if test $(PHP_VERSION) -ge 50300; then \
++		$(SED) -i -e 's/^<?php/<?php namespace qmf;/' cqmf2.php; \
++	fi
++
++$(PHP_INI_FILE): cqmf2.la
++	echo '; configuration for PHP QMF2 module' > $(PHP_INI_FILE)
++	echo "extension=$(PHP_EXTENSION_DIR)/"`$(SED) -ne "s/^dlname='\(.*\)'/\1/p" cqmf2.la` >> $(PHP_INI_FILE)
++
++if HAVE_PHP_DYNAMIC_INSTALL
++phplibarchdir = $(PHP_EXTENSION_DIR)
++phplibarch_LTLIBRARIES = cqmf2.la
++cqmf2_la_LDFLAGS = -avoid-version -module -shared
++cqmf2_la_LIBADD = -L$(top_builddir)/src/.libs $(top_builddir)/src/libqmf2.la
++cqmf2_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION)
++nodist_cqmf2_la_SOURCES = cqmf2.cpp
++cqmf2_confdir = $(PHP_CONFIG_DIR)
++cqmf2_conf_DATA = $(PHP_INI_FILE)
++endif
++
++if HAVE_PHP_STATIC_INSTALL
++cqmf2_staticdir = $(PHP_INCLUDE_DIR)/ext/qpid
++cqmf2_static_DATA = cqmf2.cpp
++cqmf2_static_HEADERS = php_cqmf2.h
++endif
++
++if HAVE_PHP_WRAPPER_INSTALL
++cqmf2_wrapperdir = $(PHP_WRAPPER_DIR)
++cqmf2_wrapper_DATA = cqmf2.php
++endif
++
++CLEANFILES = $(SWIG_OUTPUT) $(PHP_INI_FILE)
++
++endif # HAVE_PHP_DEVEL
+Index: cpp/bindings/qmf2/php/php.i
+===================================================================
+--- cpp/bindings/qmf2/php/php.i	(revision 0)
++++ cpp/bindings/qmf2/php/php.i	(revision 0)
+@@ -0,0 +1,90 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++%module cqmf2
++
++%include "std_string.i"
++
++/* Include the PHP-specific SWIG typemaps */
++%include "../../swig_php_typemaps.i"
++
++/* Include our phpinfo support (same as the cqpid module for now) */
++%include "../../qpid/php/phpinfo.i"
++
++/* Define the general-purpose exception handling */
++%exception {
++    try {
++        $action
++    } catch (const qpid::messaging::MessagingException &ex) {
++        SWIG_exception(SWIG_RuntimeError, ex.what());
++    }
++}
++
++/*
++ * Apply a custom prefix to all SWIG-generated global functions.  This is not
++ * only good practice, but is necessary for this module since without doing so
++ * the Session::commit method would be exposed as session_commit which clashes
++ * with the PHP built-in session_commit function preventing the PHP
++ * interpreter from loading.
++ *
++ * See https://sourceforge.net/tracker/?func=detail&aid=3168551&group_id=1645&atid=351645
++ * for more details.
++ */
++%rename("qmf_%s") "";
++/*
++ * Unfortunately the %rename directive above will result in the wrapper
++ * classes also being prefixed, so for example the Connection class will become
++ * qpid_messaging_Connection.  Thus we strip the prefix from wrapper class
++ * names later in the build system.
++ *
++ * Alternatively, we could perform a narrow %rename of just functions, not
++ * classes, such as: %rename("qpid_messagins_%s", %$isfunction) "";  However,
++ * that will still result in some non-prefixed global functions, such as
++ * new_Session and Session_copy, which can still cause conflicts with other
++ * modules, causing PHP to fail to start.
++ */
++
++/* Rename some operators that would otherwise not be accessible to PHP */
++%rename(copy)         operator=(const AgentEvent&);
++%rename(copy)         operator=(const Agent&);
++%rename(copy)         operator=(const AgentSession&);
++%rename(copy)         operator=(const Console&);
++%rename(copy)         operator=(const ConsoleEvent&);
++%rename(copy)         operator=(const ConsoleSession&);
++%rename(copy)         operator=(const DataAddr&);
++%rename(is_equal)     operator==(const DataAddr&);
++%rename(is_less_than) operator<(const DataAddr&);
++%rename(copy)         operator=(const Data&);
++%rename(copy)         operator=(const Query&);
++%rename(copy)         operator=(const Schema&);
++%rename(copy)         operator=(const SchemaId&);
++%rename(copy)         operator=(const SchemaMethod&);
++%rename(copy)         operator=(const SchemaProperty&);
++%rename(copy)         operator=(const Subscription&);
++//%rename(multiply)     operator*(const Duration& duration, uint64_t multiplier);
++//%rename(multiply)     operator*(uint64_t multiplier,const Duration& duration);
++
++// These two are already defined in cqpid, so no need to re-export.
++%ignore operator*(const Duration& duration, uint64_t multiplier);
++%ignore operator*(uint64_t multiplier,const Duration& duration);
++
++/* Include the common QMF2 SWIG interface file */
++%include "../qmf2.i"
++
++// End of php.i
+Index: cpp/bindings/qmf2/Makefile.am
+===================================================================
+--- cpp/bindings/qmf2/Makefile.am	(revision 1086164)
++++ cpp/bindings/qmf2/Makefile.am	(working copy)
+@@ -30,4 +30,8 @@
+ SUBDIRS += python
+ endif
+ 
++if HAVE_PHP_DEVEL
++SUBDIRS += php
+ endif
++
++endif
+Index: cpp/bindings/qmf2/examples/php/cli/list_agents.php
+===================================================================
+--- cpp/bindings/qmf2/examples/php/cli/list_agents.php	(revision 0)
++++ cpp/bindings/qmf2/examples/php/cli/list_agents.php	(revision 0)
+@@ -0,0 +1,61 @@
++<?php
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++require('cqpid.php');
++require('cqmf2.php');
++
++$url = $argc > 1 ? $argv[1] : 'localhost';
++$connectionOptions = ($argc > 2) ? $argv[2] : '';
++$sessionOptions = $argc > 3 ? $argv[3] : '';
++
++try {
++    $connection = new qpid\messaging\Connection($url, $connectionOptions);
++    $connection->open();
++
++    $session = new qmf\ConsoleSession($connection, $sessionOptions);
++    $session->open();
++
++    $session->setAgentFilter('');
++
++    while (true) {
++        $event = new qmf\ConsoleEvent;
++        if ($session->nextEvent($event)) {
++            if ($event->getType() == qmf\cqmf2::CONSOLE_AGENT_ADD) {
++                $extra = '';
++                if ($event->getAgent()->getName() == $session->getConnectedBrokerAgent()->getName())
++                    $extra = '  [Connected Broker]';
++                print 'Agent Added: ' . $event->getAgent()->getName() . $extra . "\n";
++            }
++            if ($event->getType() == qmf\cqmf2::CONSOLE_AGENT_DEL) {
++                if ($event->getAgentDelReason() == qmf\cqmf2::AGENT_DEL_AGED)
++                    print 'Agent Aged: ' . $event->getAgent()->getName() . "\n";
++                else
++                    print 'Agent Filtered: ' . $event->getAgent()->getName() . "\n";
++            }
++        }
++    }
++} catch (\Exception $error) {
++    print $error->getMessage() . "\n";
++    if (isset($connection)) {
++        $connection->close();
++    }
++    exit(1);
++}
++?>
 Index: cpp/bindings/swig_php_typemaps.i
 ===================================================================
 --- cpp/bindings/swig_php_typemaps.i	(revision 0)
 +++ cpp/bindings/swig_php_typemaps.i	(revision 0)
-@@ -0,0 +1,450 @@
+@@ -0,0 +1,455 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -158,6 +418,11 @@ Index: cpp/bindings/swig_php_typemaps.i
 +        }
 +    }
 +
++    // Overloaded required by QMF2 only.
++    void mapToZval(zval * const output, const qpid::types::Variant::Map &map TSRMLS_DC) {
++        mapToZval(output, &map TSRMLS_CC);
++    }
++
 +    /*
 +     * Functions for converting from Qpid Variants to PHP variables.
 +     */
@@ -280,17 +545,17 @@ Index: cpp/bindings/swig_php_typemaps.i
 +                    if (value < 0) {
 +                        if (value >= std::numeric_limits<int8_t>::min())
 +                            return (int8_t)value;
-+                        if (value >= std::numeric_limits<int8_t>::min())
++                        if (value >= std::numeric_limits<int16_t>::min())
 +                            return (int16_t)value;
-+                        if (value >= std::numeric_limits<int8_t>::min())
++                        if (value >= std::numeric_limits<int32_t>::min())
 +                            return (int32_t)value;
 +                        return (int64_t)value;
 +                    } else {
-+                        if (value <= std::numeric_limits<uint8_t>::min())
++                        if (value <= std::numeric_limits<uint8_t>::max())
 +                            return (uint8_t)value;
-+                        if (value <= std::numeric_limits<uint8_t>::min())
++                        if (value <= std::numeric_limits<uint16_t>::max())
 +                            return (uint16_t)value;
-+                        if (value <= std::numeric_limits<uint8_t>::min())
++                        if (value <= std::numeric_limits<uint32_t>::max())
 +                            return (uint32_t)value;
 +                        return (uint64_t)value;
 +                    }
@@ -504,7 +769,7 @@ Index: cpp/bindings/qpid/php/Makefile.am
 +	$(SED) -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g' \
 +	          -e 's/zend_error_noreturn/zend_error/g' cqpid.cpp
 +	$(SED) -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g' \
-+	          -e 's/\(class\|function\|new\) qpid_messaging_/\1 /g' \
++	          -e 's/\(class\|extends\|function\|new\) qpid_messaging_/\1 /g' \
 +	          -e 's/\(static function \(FOREVER\|IMMEDIATE\|SECOND\|MINUTE\)()\)/const \2 = QPID_MESSAGING_DURATION_\2; \1/' \
 +		cqpid.php
 +	if test $(PHP_VERSION) -ge 50300; then \
@@ -528,7 +793,7 @@ Index: cpp/bindings/qpid/php/Makefile.am
 +endif
 +
 +if HAVE_PHP_STATIC_INSTALL
-+cqpid_staticdir = $(PHP_INCLUDE_DIR)
++cqpid_staticdir = $(PHP_INCLUDE_DIR)/ext/qpid
 +cqpid_static_DATA = cqpid.cpp
 +cqpid_static_HEADERS = php_cqpid.h
 +endif
@@ -739,7 +1004,7 @@ Index: cpp/bindings/qpid/php/php.i
 +}
 +
 +/* Include the common Qpid SWIG interface file */
-+%include </home/paul/src/qpidc-0.8/bindings/qpid/qpid.i>
++%include <../qpid.i>
 +
 +/* Define type-agnostic codec wrapper functions */
 +%pragma(php) code = %{
@@ -763,6 +1028,19 @@ Index: cpp/bindings/qpid/php/php.i
 +%}
 +
 +// End of php.i
+Index: cpp/bindings/qpid/Makefile.am
+===================================================================
+--- cpp/bindings/qpid/Makefile.am	(revision 1086164)
++++ cpp/bindings/qpid/Makefile.am	(working copy)
+@@ -35,4 +35,8 @@
+ SUBDIRS += perl
+ endif
+ 
++if HAVE_PHP_DEVEL
++SUBDIRS += php
+ endif
++
++endif
 Index: cpp/bindings/qpid/examples/php/cli/hello_world.php
 ===================================================================
 --- cpp/bindings/qpid/examples/php/cli/hello_world.php	(revision 0)
@@ -1069,9 +1347,114 @@ Index: cpp/bindings/qpid/examples/php/cli/server.php
 +}
 +exit(1);
 +?>
+Index: cpp/bindings/qpid/examples/php/web/hello_world.php
+===================================================================
+--- cpp/bindings/qpid/examples/php/web/hello_world.php	(revision 0)
++++ cpp/bindings/qpid/examples/php/web/hello_world.php	(revision 0)
+@@ -0,0 +1,100 @@
++<?php
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++namespace qpid\messaging;
++
++require('cqpid.php');
++
++function getIfSet($array, $key, $default=null) {
++    return (isset($array[$key])) ? $array[$key] : $default;
++}
++
++if ((isset($_REQUEST['broker']))  &&
++    (isset($_REQUEST['address'])) &&
++    (isset($_REQUEST['messageContent'])))
++{
++    $connectionOptions = getIfSet($_REQUEST, 'connectionOptions', '');
++
++    try {
++        $connection = new Connection($_REQUEST['broker'], $connectionOptions);
++        $connection->open();
++        $session = $connection->createSession();
++
++        $receiver = $session->createReceiver($_REQUEST['address']);
++        $sender = $session->createSender($_REQUEST['address']);
++
++        $sender->send(new Message($_REQUEST['messageContent']));
++
++        $message = $receiver->fetch(new Duration(Duration::SECOND * 1));
++        $content = $message->getContent();
++        $session->acknowledge();
++
++        $connection->close();
++    } catch(\Exception $error) {
++        if (isset($connection)) {
++            $connection->close();
++        }
++        header("HTTP/1.0 500 Internal Server Error");
++        $errorMessage = $error->getMessage();
++    }
++}
++
++if ($success !== false) {
++?>
++<html>
++ <body>
++  <?php
++      if (isset($errorMessage))
++          print '<p style="color:red">' . htmlentities($errorMessage) . '</p><hr />';
++  ?>
++  <form>
++   <table>
++    <tr>
++      <td><label for="broker">Broker:</label></td>
++      <td><input id="broker" name="broker" type="text"
++           value="<?php print getIfSet($_REQUEST, 'broker', 'localhost:5672'); ?>" />
++      </td>
++    </tr>
++    <tr>
++     <td><label for="address">Address:</label></td>
++     <td><input id="address" name="address" type="text"
++          value="<?php print getIfSet($_REQUEST, 'address', 'amq.topic'); ?>" />
++     </td>
++    </tr>
++    <tr>
++     <td><label for="connectionOptions">Connection options:</label></td>
++     <td><input id="connectionOptions" name="connectionOptions" type="text"
++          value="<?php print getIfSet($_REQUEST, 'connectionOptions'); ?>" />
++     </td>
++    </tr>
++    <tr>
++     <td><label for="messageContent">Message content:</label></td>
++     <td><textarea id="messageContent" name="messageContent"><?php
++          print getIfSet($_REQUEST, 'messageContent', 'Hello world!');
++         ?></textarea>
++     </td>
++    </tr>
++    <tr><td></td><td><input type="submit" /></td>
++   </table>
++  </form>
++  <?php if (isset($content)) print '<hr /><p>' . htmlentities($content) . '</p>'; ?>
++ </body>
++</html>
++<?php } ?>
 Index: cpp/configure.ac
 ===================================================================
---- cpp/configure.ac	(revision 1075699)
+--- cpp/configure.ac	(revision 1086164)
 +++ cpp/configure.ac	(working copy)
 @@ -228,7 +228,74 @@
  fi
@@ -1117,7 +1500,7 @@ Index: cpp/configure.ac
 +
 +    if test -z "$PHP_INCLUDE_DIR" ; then
 +        AC_MSG_CHECKING([for directory to install static PHP extension header to])
-+        PHP_INCLUDE_DIR=`"$PHP_CONFIG" --include-dir`/ext/cqpid
++        PHP_INCLUDE_DIR=`"$PHP_CONFIG" --include-dir`
 +        AC_SUBST(PHP_INCLUE_DIR)
 +        AC_MSG_RESULT([$PHP_INCLUDE_DIR])
 +    fi
@@ -1148,7 +1531,7 @@ Index: cpp/configure.ac
  # Perl bindings:
  
  AC_CHECK_PROG([PERL], [perl], [perl])
-@@ -537,6 +604,7 @@
+@@ -538,6 +605,7 @@
    bindings/qpid/Makefile
    bindings/qpid/ruby/Makefile
    bindings/qpid/python/Makefile
@@ -1156,3 +1539,11 @@ Index: cpp/configure.ac
    bindings/qpid/perl/Makefile
    bindings/qpid/dotnet/Makefile
    bindings/qmf/Makefile
+@@ -547,6 +615,7 @@
+   bindings/qmf2/Makefile
+   bindings/qmf2/ruby/Makefile
+   bindings/qmf2/python/Makefile
++  bindings/qmf2/php/Makefile
+   bindings/qmf2/examples/cpp/Makefile
+   managementgen/Makefile
+   etc/Makefile

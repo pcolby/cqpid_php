@@ -32,7 +32,7 @@ $(SWIG_OUTPUT): $(srcdir)/php.i $(srcdir)/phpinfo.i $(srcdir)/../qpid.i $(srcdir
 	$(SED) -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g' \
 	          -e 's/zend_error_noreturn/zend_error/g' cqpid.cpp
 	$(SED) -i -e 's/\(qpid_messaging_\w*\)_qpid_messaging/\1/g' \
-	          -e 's/\(class\|function\|new\) qpid_messaging_/\1 /g' \
+	          -e 's/\(class\|extends\|function\|new\) qpid_messaging_/\1 /g' \
 	          -e 's/\(static function \(FOREVER\|IMMEDIATE\|SECOND\|MINUTE\)()\)/const \2 = QPID_MESSAGING_DURATION_\2; \1/' \
 		cqpid.php
 	if test $(PHP_VERSION) -ge 50300; then \
@@ -56,7 +56,7 @@ cqpid_conf_DATA = $(PHP_INI_FILE)
 endif
 
 if HAVE_PHP_STATIC_INSTALL
-cqpid_staticdir = $(PHP_INCLUDE_DIR)
+cqpid_staticdir = $(PHP_INCLUDE_DIR)/ext/qpid
 cqpid_static_DATA = cqpid.cpp
 cqpid_static_HEADERS = php_cqpid.h
 endif
