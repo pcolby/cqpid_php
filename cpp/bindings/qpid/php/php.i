@@ -24,6 +24,9 @@
 /* Include the PHP-specific SWIG typemaps */
 %include "../../swig_php_typemaps.i"
 
+/* Include our phpinfo support */
+%include "phpinfo.i"
+
 /* Define the general-purpose exception handling */
 %exception {
     try {
@@ -58,24 +61,17 @@
  */
 
 /*
- * Rename or ignore some overloaded member functions that expose a bug
- * (segmentation fault) in SWIG.
- *
- * See https://sourceforge.net/tracker/?func=detail&aid=3168531&group_id=1645&atid=101645
- * for more details.
+ * Ignore some overloaded member functions for SWIG versions earlier than
+ * SWIG 2.0.2 (or else SWIG would seg-fault). See SWIG artifact 3168531.
  */
-//%rename(fetchNoThrow)        qpid::messaging::Receiver::fetch       (Message&);
-//%rename(fetchNoThrow)        qpid::messaging::Receiver::fetch       (Message&,Duration);
-//%rename(getNoThrow)          qpid::messaging::Receiver::get         (Message&);
-//%rename(getNoThrow)          qpid::messaging::Receiver::get         (Message&,Duration);
-//%rename(nextReceiverNoThrow) qpid::messaging::Session ::nextReceiver(Receiver&);
-//%rename(nextReceiverNoThrow) qpid::messaging::Session ::nextReceiver(Receiver&,Duration);
+#if SWIG_VERSION < 0x020002 // SWIG version < 2.0.2
 %ignore qpid::messaging::Receiver::fetch       (Message&);
 %ignore qpid::messaging::Receiver::fetch       (Message&,Duration);
 %ignore qpid::messaging::Receiver::get         (Message&);
 %ignore qpid::messaging::Receiver::get         (Message&,Duration);
 %ignore qpid::messaging::Session ::nextReceiver(Receiver&);
 %ignore qpid::messaging::Session ::nextReceiver(Receiver&,Duration);
+#endif
 
 /* Rename some operators that would otherwise not be accessible to PHP */
 %rename(copy)     operator=(const Address&);
@@ -91,8 +87,8 @@
 
 /*
  * PHP has no concept of constant-variables, so the following methods will
- * never be used by SWIG/PHP (there are non-const versions which SWIG will use
- * instead).  Ignore them, just to avoid benign SWIG warnings.
+ * never be used by SWIG/PHP (there are non-const versions which SWIG will
+ * use instead).  Ignore them, just to avoid benign SWIG warnings.
  */
 %ignore qpid::messaging::Address::getOptions()    const;
 %ignore qpid::messaging::Message::getProperties() const;
@@ -109,5 +105,28 @@
     SWIG_LONG_CONSTANT(QPID_MESSAGING_DURATION_MINUTE,    qpid::messaging::Duration::MINUTE.getMilliseconds());
 }
 
-/* Finally, include the common Qpid SWIG interface file */
+/* Include the common Qpid SWIG interface file */
 %include </home/paul/src/qpidc-0.8/bindings/qpid/qpid.i>
+
+/* Define type-agnostic codec wrapper functions */
+%pragma(php) code = %{
+
+function encode($content, $message = null) {
+    if ($message === null) {
+        $message = new Message();
+    }
+    qpid_messaging_encode($content, $message);
+    return $message;
+}
+
+function decode($message) {
+    if ($message->getContentType() == "amqp/list") {
+        return qpid_messaging_decodeList($message);
+    } else {
+        return qpid_messaging_decodeMap($message);
+    }
+}
+
+%}
+
+// End of php.i

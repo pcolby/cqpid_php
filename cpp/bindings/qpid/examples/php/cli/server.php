@@ -22,22 +22,21 @@ namespace qpid\messaging;
 
 require('cqpid.php');
 
-$url = $argc>1 ? $argv[1] : "amqp:tcp:127.0.0.1:5672";
-$connectionOptions = $argc > 3 ? $argv[3] : "";
+$url = $argc>1 ? $argv[1] : 'amqp:tcp:127.0.0.1:5672';
+$connectionOptions = $argc > 3 ? $argv[3] : '';
 
 $connection = new Connection($url, $connectionOptions);
 try {
     $connection->open();
     $session = $connection->createSession();
-    $receiver = $session->createReceiver("service_queue; {create: always}");
+    $receiver = $session->createReceiver('service_queue; {create: always}');
 
     while (true) {
         $request = $receiver->fetch();
         $address = $request->getReplyTo();
         if ($address->isValid()) {
             $sender = $session->createSender($address);
-            $s = $request->getContent();
-            // toupper ... std::transform(s.begin(), s.end(), s.begin(), toupper);
+            $s = strtoupper($request->getContent());
             $response = new Message($s);
             $sender->send($response);
             print 'Processed request: ' .

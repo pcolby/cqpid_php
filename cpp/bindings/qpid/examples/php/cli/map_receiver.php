@@ -23,35 +23,18 @@ namespace qpid\messaging;
 require('cqpid.php');
 
 $url = $argc>1 ? $argv[1] : 'amqp:tcp:127.0.0.1:5672';
-$connectionOptions = $argc > 2 ? $argv[2] : '';
+$address = $argc>2 ? $argv[2] : 'message_queue; {create: always}';
+$connectionOptions = $argc > 3 ? $argv[3] : '';
 
 $connection = new Connection($url, $connectionOptions);
 try {
     $connection->open();
     $session = $connection->createSession();
-
-    $sender = $session->createSender('service_queue');
-
-    //create temp queue & receiver...
-    $responseQueue = new Address('#response-queue; {create:always, delete:always}');
-    $receiver = $session->createReceiver($responseQueue);
-
-    // Now send some messages ...
-    $s = array(
-        'Twas brillig, and the slithy toves',
-        'Did gire and gymble in the wabe.',
-        'All mimsy were the borogroves,',
-        'And the mome raths outgrabe.'
-    );
-
-    $request = new Message();
-    $request->setReplyTo($responseQueue);
-    foreach ($s as $content) {
-       $request->setContent($content);
-       $sender->send($request);
-       $response = $receiver->fetch();
-       print $request->getContent() . ' -> ' . $response->getContent() . "\n";
-    }
+    $receiver = $session->createReceiver($address);
+    $content = decode($receiver->fetch());
+    print_r($content);
+    $session->acknowledge();
+    $receiver->close();
     $connection->close();
     exit(0);
 } catch(\Exception $error) {

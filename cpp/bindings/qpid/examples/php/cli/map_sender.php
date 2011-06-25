@@ -23,35 +23,28 @@ namespace qpid\messaging;
 require('cqpid.php');
 
 $url = $argc>1 ? $argv[1] : 'amqp:tcp:127.0.0.1:5672';
-$connectionOptions = $argc > 2 ? $argv[2] : '';
+$address = $argc>2 ? $argv[2] : 'message_queue; {create: always}';
+$connectionOptions = $argc > 3 ? $argv[3] : '';
 
 $connection = new Connection($url, $connectionOptions);
 try {
     $connection->open();
     $session = $connection->createSession();
+    $sender = $session->createSender($address);
 
-    $sender = $session->createSender('service_queue');
-
-    //create temp queue & receiver...
-    $responseQueue = new Address('#response-queue; {create:always, delete:always}');
-    $receiver = $session->createReceiver($responseQueue);
-
-    // Now send some messages ...
-    $s = array(
-        'Twas brillig, and the slithy toves',
-        'Did gire and gymble in the wabe.',
-        'All mimsy were the borogroves,',
-        'And the mome raths outgrabe.'
+    $message = new Message;
+    $content = array(
+        'id'      => 987654321,
+        'name'    => 'Widget',
+        'percent' => 0.99
     );
+    $colours = array('red', 'green', 'white');
+    $content['colours'] = $colours;
+    $content['uuid'] = '773bb118-286c-435e-8948-71e57f9e2f97';
+    encode($content, $message);
 
-    $request = new Message();
-    $request->setReplyTo($responseQueue);
-    foreach ($s as $content) {
-       $request->setContent($content);
-       $sender->send($request);
-       $response = $receiver->fetch();
-       print $request->getContent() . ' -> ' . $response->getContent() . "\n";
-    }
+    $sender->send($message, true);
+
     $connection->close();
     exit(0);
 } catch(\Exception $error) {
