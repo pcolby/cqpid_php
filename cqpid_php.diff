@@ -317,7 +317,7 @@ Index: qpid/cpp/bindings/qmf2/php/php.i
 +// End of php.i
 Index: qpid/cpp/bindings/qmf2/Makefile.am
 ===================================================================
---- qpid/cpp/bindings/qmf2/Makefile.am	(revision 1092659)
+--- qpid/cpp/bindings/qmf2/Makefile.am	(revision 1140078)
 +++ qpid/cpp/bindings/qmf2/Makefile.am	(working copy)
 @@ -30,4 +30,8 @@
  SUBDIRS += python
@@ -733,7 +733,7 @@ Index: qpid/cpp/bindings/swig_php_typemaps.i
 +                    }
 +                }
 +            case IS_NULL:
-+                return NULL;
++                return qpid::types::Variant(); // A VAR_VOID variant.
 +            case IS_OBJECT: {
 +                    // Mimic var_dump's object serialisation.
 +                    char *className;
@@ -1345,7 +1345,7 @@ Index: qpid/cpp/bindings/qpid/php/php.i
 +// End of php.i
 Index: qpid/cpp/bindings/qpid/Makefile.am
 ===================================================================
---- qpid/cpp/bindings/qpid/Makefile.am	(revision 1092659)
+--- qpid/cpp/bindings/qpid/Makefile.am	(revision 1140078)
 +++ qpid/cpp/bindings/qpid/Makefile.am	(working copy)
 @@ -35,4 +35,8 @@
  SUBDIRS += perl
@@ -1358,7 +1358,7 @@ Index: qpid/cpp/bindings/qpid/Makefile.am
 +endif
 Index: qpid/cpp/bindings/qpid/CMakeLists.txt
 ===================================================================
---- qpid/cpp/bindings/qpid/CMakeLists.txt	(revision 1092659)
+--- qpid/cpp/bindings/qpid/CMakeLists.txt	(revision 1140078)
 +++ qpid/cpp/bindings/qpid/CMakeLists.txt	(working copy)
 @@ -23,6 +23,7 @@
  include(FindRuby)
@@ -1790,9 +1790,9 @@ Index: qpid/cpp/bindings/qpid/examples/php/web/hello_world.php
 +<?php } ?>
 Index: qpid/cpp/configure.ac
 ===================================================================
---- qpid/cpp/configure.ac	(revision 1092659)
+--- qpid/cpp/configure.ac	(revision 1140078)
 +++ qpid/cpp/configure.ac	(working copy)
-@@ -228,7 +228,74 @@
+@@ -230,7 +230,74 @@
  fi
  AM_CONDITIONAL([HAVE_PYTHON_DEVEL], [test -f $PYTHON_INC/Python.h && test -n "$SWIG"])
  
@@ -1867,7 +1867,7 @@ Index: qpid/cpp/configure.ac
  # Perl bindings:
  
  AC_CHECK_PROG([PERL], [perl], [perl])
-@@ -538,6 +605,7 @@
+@@ -540,6 +607,7 @@
    bindings/qpid/Makefile
    bindings/qpid/ruby/Makefile
    bindings/qpid/python/Makefile
@@ -1875,7 +1875,7 @@ Index: qpid/cpp/configure.ac
    bindings/qpid/perl/Makefile
    bindings/qpid/dotnet/Makefile
    bindings/qmf/Makefile
-@@ -547,6 +615,7 @@
+@@ -549,6 +617,7 @@
    bindings/qmf2/Makefile
    bindings/qmf2/ruby/Makefile
    bindings/qmf2/python/Makefile
@@ -1885,7 +1885,7 @@ Index: qpid/cpp/configure.ac
    etc/Makefile
 Index: qpid/cpp/CMakeLists.txt
 ===================================================================
---- qpid/cpp/CMakeLists.txt	(revision 1092659)
+--- qpid/cpp/CMakeLists.txt	(revision 1140078)
 +++ qpid/cpp/CMakeLists.txt	(working copy)
 @@ -80,6 +80,7 @@
  add_subdirectory(managementgen)
