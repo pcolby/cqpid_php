@@ -296,7 +296,7 @@
                     }
                 }
             case IS_NULL:
-                return NULL;
+                return qpid::types::Variant(); // A VAR_VOID variant.
             case IS_OBJECT: {
                     // Mimic var_dump's object serialisation.
                     char *className;
