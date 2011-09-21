@@ -68,8 +68,10 @@
 %rename(copy)         operator=(const ConsoleEvent&);
 %rename(copy)         operator=(const ConsoleSession&);
 %rename(copy)         operator=(const DataAddr&);
-%rename(is_equal)     operator==(const DataAddr&);
-%rename(is_less_than) operator<(const DataAddr&);
+%rename(isEqual)      operator==(const DataAddr&);
+%rename(isEqual)      operator==(const Duration&, const Duration&);
+%rename(isNotEqual)   operator!=(const Duration&, const Duration&);
+%rename(isLessThan)   operator<(const DataAddr&);
 %rename(copy)         operator=(const Data&);
 %rename(copy)         operator=(const Query&);
 %rename(copy)         operator=(const Schema&);
@@ -79,6 +81,14 @@
 %rename(copy)         operator=(const Subscription&);
 //%rename(multiply)     operator*(const Duration& duration, uint64_t multiplier);
 //%rename(multiply)     operator*(uint64_t multiplier,const Duration& duration);
+
+/*
+ * PHP has no concept of constant-variables, so the following methods will
+ * never be used by SWIG/PHP (there are non-const versions which SWIG will
+ * use instead).  Ignore them, just to avoid benign SWIG warnings.
+ */
+%ignore qmf::DataAddr::operator==(const DataAddr&) const;
+%ignore qmf::DataAddr::operator<(const DataAddr&) const;
 
 // These two are already defined in cqpid, so no need to re-export.
 %ignore operator*(const Duration& duration, uint64_t multiplier);

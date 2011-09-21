@@ -80,6 +80,8 @@
 %rename(copy)     operator=(const Sender&);
 %rename(copy)     operator=(const Session&);
 %rename(copy)     operator=(const Connection&);
+%rename(isEqual)    operator==(const Duration&, const Duration&);
+%rename(isNotEqual) operator!=(const Duration&, const Duration&);
 %rename(isValid)  operator bool() const;
 %rename(isNull)   operator!() const;
 %rename(multiply) operator*(const Duration& duration, uint64_t multiplier);
