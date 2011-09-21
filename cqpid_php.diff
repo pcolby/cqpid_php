@@ -317,7 +317,7 @@ Index: qpid/cpp/bindings/qmf2/php/php.i
 +// End of php.i
 Index: qpid/cpp/bindings/qmf2/Makefile.am
 ===================================================================
---- qpid/cpp/bindings/qmf2/Makefile.am	(revision 1140078)
+--- qpid/cpp/bindings/qmf2/Makefile.am	(revision 1173567)
 +++ qpid/cpp/bindings/qmf2/Makefile.am	(working copy)
 @@ -30,4 +30,8 @@
  SUBDIRS += python
@@ -1345,7 +1345,7 @@ Index: qpid/cpp/bindings/qpid/php/php.i
 +// End of php.i
 Index: qpid/cpp/bindings/qpid/Makefile.am
 ===================================================================
---- qpid/cpp/bindings/qpid/Makefile.am	(revision 1140078)
+--- qpid/cpp/bindings/qpid/Makefile.am	(revision 1173567)
 +++ qpid/cpp/bindings/qpid/Makefile.am	(working copy)
 @@ -35,4 +35,8 @@
  SUBDIRS += perl
@@ -1358,7 +1358,7 @@ Index: qpid/cpp/bindings/qpid/Makefile.am
 +endif
 Index: qpid/cpp/bindings/qpid/CMakeLists.txt
 ===================================================================
---- qpid/cpp/bindings/qpid/CMakeLists.txt	(revision 1140078)
+--- qpid/cpp/bindings/qpid/CMakeLists.txt	(revision 1173567)
 +++ qpid/cpp/bindings/qpid/CMakeLists.txt	(working copy)
 @@ -23,6 +23,7 @@
  include(FindRuby)
@@ -1790,7 +1790,7 @@ Index: qpid/cpp/bindings/qpid/examples/php/web/hello_world.php
 +<?php } ?>
 Index: qpid/cpp/configure.ac
 ===================================================================
---- qpid/cpp/configure.ac	(revision 1140078)
+--- qpid/cpp/configure.ac	(revision 1173567)
 +++ qpid/cpp/configure.ac	(working copy)
 @@ -230,7 +230,74 @@
  fi
@@ -1885,7 +1885,7 @@ Index: qpid/cpp/configure.ac
    etc/Makefile
 Index: qpid/cpp/CMakeLists.txt
 ===================================================================
---- qpid/cpp/CMakeLists.txt	(revision 1140078)
+--- qpid/cpp/CMakeLists.txt	(revision 1173567)
 +++ qpid/cpp/CMakeLists.txt	(working copy)
 @@ -80,6 +80,7 @@
  add_subdirectory(managementgen)
