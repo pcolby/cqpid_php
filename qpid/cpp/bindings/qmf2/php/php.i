@@ -69,8 +69,8 @@
 %rename(copy)         operator=(const ConsoleSession&);
 %rename(copy)         operator=(const DataAddr&);
 %rename(isEqual)      operator==(const DataAddr&);
-%rename(isEqual)      operator==(const Duration&, const Duration&);
-%rename(isNotEqual)   operator!=(const Duration&, const Duration&);
+//%rename(isEqual)      operator==(const Duration&, const Duration&);
+//%rename(isNotEqual)   operator!=(const Duration&, const Duration&);
 %rename(isLessThan)   operator<(const DataAddr&);
 %rename(copy)         operator=(const Data&);
 %rename(copy)         operator=(const Query&);
@@ -91,6 +91,8 @@
 %ignore qmf::DataAddr::operator<(const DataAddr&) const;
 
 // These two are already defined in cqpid, so no need to re-export.
+%ignore operator==(const Duration&, const Duration&);
+%ignore operator!=(const Duration&, const Duration&);
 %ignore operator*(const Duration& duration, uint64_t multiplier);
 %ignore operator*(uint64_t multiplier,const Duration& duration);
 
