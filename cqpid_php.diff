@@ -54,7 +54,7 @@ Index: qpid/cpp/bindings/qmf2/php/Makefile.am
 +phplibarch_LTLIBRARIES = cqmf2.la
 +cqmf2_la_LDFLAGS = -avoid-version -module -shared
 +cqmf2_la_LIBADD = -L$(top_builddir)/src/.libs $(top_builddir)/src/libqmf2.la
-+cqmf2_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION)
++cqmf2_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION) -Wno-write-strings
 +nodist_cqmf2_la_SOURCES = cqmf2.cpp
 +cqmf2_confdir = $(PHP_CONFIG_DIR)
 +cqmf2_conf_DATA = $(PHP_INI_FILE)
@@ -953,7 +953,7 @@ Index: qpid/cpp/bindings/qpid/php/Makefile.am
 +cqpid_la_LDFLAGS = -avoid-version -module -shared
 +cqpid_la_LIBADD = -L$(top_builddir)/src/.libs -lqpidmessaging -lqpidtypes \
 +	$(top_builddir)/src/libqpidmessaging.la $(top_builddir)/src/libqpidtypes.la
-+cqpid_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION)
++cqpid_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION) -Wno-write-strings
 +nodist_cqpid_la_SOURCES = cqpid.cpp
 +cqpid_confdir = $(PHP_CONFIG_DIR)
 +cqpid_conf_DATA = $(PHP_INI_FILE)

@@ -49,7 +49,7 @@ phplibarch_LTLIBRARIES = cqpid.la
 cqpid_la_LDFLAGS = -avoid-version -module -shared
 cqpid_la_LIBADD = -L$(top_builddir)/src/.libs -lqpidmessaging -lqpidtypes \
 	$(top_builddir)/src/libqpidmessaging.la $(top_builddir)/src/libqpidtypes.la
-cqpid_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION)
+cqpid_la_CXXFLAGS = -fpic $(INCLUDES) $(PHP_DEV_INCLUDES) $(PHP_QPID_VERSION) -Wno-write-strings
 nodist_cqpid_la_SOURCES = cqpid.cpp
 cqpid_confdir = $(PHP_CONFIG_DIR)
 cqpid_conf_DATA = $(PHP_INI_FILE)
