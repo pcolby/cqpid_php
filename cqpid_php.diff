@@ -327,7 +327,7 @@ Index: qpid/cpp/bindings/qmf2/php/php.i
 +// End of php.i
 Index: qpid/cpp/bindings/qmf2/Makefile.am
 ===================================================================
---- qpid/cpp/bindings/qmf2/Makefile.am	(revision 1173567)
+--- qpid/cpp/bindings/qmf2/Makefile.am	(revision 1310193)
 +++ qpid/cpp/bindings/qmf2/Makefile.am	(working copy)
 @@ -30,4 +30,8 @@
  SUBDIRS += python
@@ -340,40 +340,25 @@ Index: qpid/cpp/bindings/qmf2/Makefile.am
 +endif
 Index: qpid/cpp/bindings/qmf2/CMakeLists.txt
 ===================================================================
---- qpid/cpp/bindings/qmf2/CMakeLists.txt	(revision 0)
-+++ qpid/cpp/bindings/qmf2/CMakeLists.txt	(revision 0)
-@@ -0,0 +1,31 @@
-+#
-+# Licensed to the Apache Software Foundation (ASF) under one
-+# or more contributor license agreements.  See the NOTICE file
-+# distributed with this work for additional information
-+# regarding copyright ownership.  The ASF licenses this file
-+# to you under the Apache License, Version 2.0 (the
-+# "License"); you may not use this file except in compliance
-+# with the License.  You may obtain a copy of the License at
-+#
-+#   http://www.apache.org/licenses/LICENSE-2.0
-+#
-+# Unless required by applicable law or agreed to in writing,
-+# software distributed under the License is distributed on an
-+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-+# KIND, either express or implied.  See the License for the
-+# specific language governing permissions and limitations
-+# under the License.
-+#
-+
-+
-+include(FindSWIG)
-+include(UseSWIG)
+--- qpid/cpp/bindings/qmf2/CMakeLists.txt	(revision 1310193)
++++ qpid/cpp/bindings/qmf2/CMakeLists.txt	(working copy)
+@@ -23,6 +23,7 @@
+ include(FindRuby)
+ include(FindPythonLibs)
+ include(FindPerlLibs)
 +include(FindPHPDev)
-+
-+if (SWIG_FOUND)
-+    #set(CMAKE_SWIG_FLAGS "-w361,362,401,467,503")
+ 
+ if (SWIG_FOUND)
+     set(CMAKE_SWIG_FLAGS "-w362,401")
+@@ -34,4 +35,8 @@
+     if (RUBY_FOUND)
+         add_subdirectory(ruby)
+     endif (RUBY_FOUND)
 +
 +    if (PHPDEV_FOUND)
 +        add_subdirectory(php)
 +    endif (PHPDEV_FOUND)
-+endif (SWIG_FOUND)
+ endif (SWIG_FOUND)
 Index: qpid/cpp/bindings/qmf2/examples/php/cli/list_agents.php
 ===================================================================
 --- qpid/cpp/bindings/qmf2/examples/php/cli/list_agents.php	(revision 0)
@@ -1357,10 +1342,10 @@ Index: qpid/cpp/bindings/qpid/php/php.i
 +// End of php.i
 Index: qpid/cpp/bindings/qpid/Makefile.am
 ===================================================================
---- qpid/cpp/bindings/qpid/Makefile.am	(revision 1173567)
+--- qpid/cpp/bindings/qpid/Makefile.am	(revision 1310193)
 +++ qpid/cpp/bindings/qpid/Makefile.am	(working copy)
-@@ -35,4 +35,8 @@
- SUBDIRS += perl
+@@ -77,4 +77,8 @@
+ 
  endif
  
 +if HAVE_PHP_DEVEL
@@ -1370,7 +1355,7 @@ Index: qpid/cpp/bindings/qpid/Makefile.am
 +endif
 Index: qpid/cpp/bindings/qpid/CMakeLists.txt
 ===================================================================
---- qpid/cpp/bindings/qpid/CMakeLists.txt	(revision 1173567)
+--- qpid/cpp/bindings/qpid/CMakeLists.txt	(revision 1310193)
 +++ qpid/cpp/bindings/qpid/CMakeLists.txt	(working copy)
 @@ -23,6 +23,7 @@
  include(FindRuby)
@@ -1802,11 +1787,11 @@ Index: qpid/cpp/bindings/qpid/examples/php/web/hello_world.php
 +<?php } ?>
 Index: qpid/cpp/configure.ac
 ===================================================================
---- qpid/cpp/configure.ac	(revision 1173567)
+--- qpid/cpp/configure.ac	(revision 1310193)
 +++ qpid/cpp/configure.ac	(working copy)
-@@ -230,7 +230,74 @@
- fi
- AM_CONDITIONAL([HAVE_PYTHON_DEVEL], [test -f $PYTHON_INC/Python.h && test -n "$SWIG"])
+@@ -215,7 +215,74 @@
+ ])
+ AM_CONDITIONAL([HAVE_PYTHON_DEVEL], [test x$have_python_dev = xyes && test -n "$SWIG"])
  
 +# PHP bindings.
  
@@ -1879,15 +1864,15 @@ Index: qpid/cpp/configure.ac
  # Perl bindings:
  
  AC_CHECK_PROG([PERL], [perl], [perl])
-@@ -540,6 +607,7 @@
+@@ -547,6 +614,7 @@
    bindings/qpid/Makefile
    bindings/qpid/ruby/Makefile
    bindings/qpid/python/Makefile
 +  bindings/qpid/php/Makefile
-   bindings/qpid/perl/Makefile
+   bindings/qpid/perl/Makefile.PL
    bindings/qpid/dotnet/Makefile
    bindings/qmf/Makefile
-@@ -549,6 +617,7 @@
+@@ -556,6 +624,7 @@
    bindings/qmf2/Makefile
    bindings/qmf2/ruby/Makefile
    bindings/qmf2/python/Makefile
@@ -1895,15 +1880,3 @@ Index: qpid/cpp/configure.ac
    bindings/qmf2/examples/cpp/Makefile
    managementgen/Makefile
    etc/Makefile
-Index: qpid/cpp/CMakeLists.txt
-===================================================================
---- qpid/cpp/CMakeLists.txt	(revision 1173567)
-+++ qpid/cpp/CMakeLists.txt	(working copy)
-@@ -80,6 +80,7 @@
- add_subdirectory(managementgen)
- add_subdirectory(etc)
- add_subdirectory(src)
-+add_subdirectory(bindings/qmf2)
- add_subdirectory(bindings/qpid)
- add_subdirectory(docs/api)
- # add_subdirectory(docs/man)
