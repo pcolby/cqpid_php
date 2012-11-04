@@ -160,7 +160,7 @@ Index: qpid/cpp/bindings/qmf2/php/CMakeLists.txt
 +## Generate a basic PHP INI file
 +##------------------------------
 +FILE(
-+  WRITE ${CMAKE_CURRENT_SOURCE_DIR}/cqmf2.ini
++  WRITE ${CMAKE_CURRENT_BINARY_DIR}/cqmf2.ini
 +    "; configuration for PHP QMF2 module\nextension=${PHP_EXTENSION_DIR}/cqmf2${CMAKE_SHARED_LIBRARY_SUFFIX}\n"
 +)
 +
@@ -1128,7 +1128,7 @@ Index: qpid/cpp/bindings/qpid/php/CMakeLists.txt
 +## Generate a basic PHP INI file
 +##------------------------------
 +FILE(
-+  WRITE ${CMAKE_CURRENT_SOURCE_DIR}/cqpid.ini
++  WRITE ${CMAKE_CURRENT_BINARY_DIR}/cqpid.ini
 +    "; configuration for PHP Qpid module\nextension=${PHP_EXTENSION_DIR}/cqpid${CMAKE_SHARED_LIBRARY_SUFFIX}\n"
 +)
 +

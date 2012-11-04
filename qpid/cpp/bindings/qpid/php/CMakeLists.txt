@@ -78,7 +78,7 @@ endif (PHP_VERNUM LESS 50300)
 ## Generate a basic PHP INI file
 ##------------------------------
 FILE(
-  WRITE ${CMAKE_CURRENT_SOURCE_DIR}/cqpid.ini
+  WRITE ${CMAKE_CURRENT_BINARY_DIR}/cqpid.ini
     "; configuration for PHP Qpid module\nextension=${PHP_EXTENSION_DIR}/cqpid${CMAKE_SHARED_LIBRARY_SUFFIX}\n"
 )
 
