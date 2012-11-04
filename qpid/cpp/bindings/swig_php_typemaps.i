@@ -299,6 +299,9 @@
                 return qpid::types::Variant(); // A VAR_VOID variant.
             case IS_OBJECT: {
                     // Mimic var_dump's object serialisation.
+                    #if PHP_VERSION_ID >= 50400
+                    const
+                    #endif
                     char *className;
                     zend_uint classNameLength;
                     const int copyNeeded = zend_get_object_classname(*input, &className, &classNameLength TSRMLS_CC);
@@ -312,6 +315,9 @@
                 }
             case IS_RESOURCE: {
                     // Mimic var_dump's resource display; eg  "resource (10) of type (stream)".
+                    #if PHP_VERSION_ID >= 50400
+                    const
+                    #endif
                     char * const type = zend_rsrc_list_get_rsrc_type(Z_LVAL_PP(input) TSRMLS_CC);
                     std::stringstream stream;
                     stream << "resource(" << Z_LVAL_PP(input) << ") of type (" << type << ')';

@@ -431,7 +431,7 @@ Index: qpid/cpp/bindings/swig_php_typemaps.i
 ===================================================================
 --- qpid/cpp/bindings/swig_php_typemaps.i	(revision 0)
 +++ qpid/cpp/bindings/swig_php_typemaps.i	(revision 0)
-@@ -0,0 +1,465 @@
+@@ -0,0 +1,471 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -733,6 +733,9 @@ Index: qpid/cpp/bindings/swig_php_typemaps.i
 +                return qpid::types::Variant(); // A VAR_VOID variant.
 +            case IS_OBJECT: {
 +                    // Mimic var_dump's object serialisation.
++                    #if PHP_VERSION_ID >= 50400
++                    const
++                    #endif
 +                    char *className;
 +                    zend_uint classNameLength;
 +                    const int copyNeeded = zend_get_object_classname(*input, &className, &classNameLength TSRMLS_CC);
@@ -746,6 +749,9 @@ Index: qpid/cpp/bindings/swig_php_typemaps.i
 +                }
 +            case IS_RESOURCE: {
 +                    // Mimic var_dump's resource display; eg  "resource (10) of type (stream)".
++                    #if PHP_VERSION_ID >= 50400
++                    const
++                    #endif
 +                    char * const type = zend_rsrc_list_get_rsrc_type(Z_LVAL_PP(input) TSRMLS_CC);
 +                    std::stringstream stream;
 +                    stream << "resource(" << Z_LVAL_PP(input) << ") of type (" << type << ')';
