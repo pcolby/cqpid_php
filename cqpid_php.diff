@@ -741,7 +741,7 @@ Index: qpid/cpp/bindings/swig_php_typemaps.i
 +                    const int copyNeeded = zend_get_object_classname(*input, &className, &classNameLength TSRMLS_CC);
 +                    const std::string key = "object(" + std::string(className, classNameLength) + ')';
 +                    if (!copyNeeded) {
-+                        efree(className);
++                        efree((void *)className);
 +                    }
 +                    qpid::types::Variant::Map map;
 +                    map[key] = zvalToMap(Z_OBJPROP_PP(input) TSRMLS_CC);
