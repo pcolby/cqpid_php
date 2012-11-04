@@ -27,7 +27,7 @@ AC_PROG_CC_STDC
 AM_PROG_CC_C_O
 AC_PROG_CXX
 AC_USE_SYSTEM_EXTENSIONS
-AC_LANG([C++])	
+AC_LANG([C++])
 
 # Check for optional use of help2man
 AC_CHECK_PROG([HELP2MAN], [help2man], [help2man])
@@ -83,14 +83,14 @@ if test x$GXX = xyes; then
 	    gl_COMPILER_FLAGS(-Wvolatile-register-var)
 	    gl_COMPILER_FLAGS(-Winvalid-pch)
 	    gl_COMPILER_FLAGS(-Wno-system-headers)
-	    gl_COMPILER_FLAGS(-Woverloaded-virtual)	
+	    gl_COMPILER_FLAGS(-Woverloaded-virtual)
 	    AC_SUBST([WARNING_CFLAGS], [$COMPILER_FLAGS])
 	    AC_DEFINE([lint], 1, [Define to 1 if the compiler is checking for lint.])
 	    COMPILER_FLAGS=
 	fi
 else
 	AC_CHECK_DECL([__SUNPRO_CC], [SUNCC=yes], [SUNCC=no])
-	
+
 	# Set up for sun CC compiler
 	if test x$SUNCC = xyes; then
 		if test "${enableval}" = yes; then
@@ -118,7 +118,7 @@ LIBS=$gl_saved_libs
 
 gl_CLOCK_TIME
 
-# Enable Valgrind	
+# Enable Valgrind
 AC_ARG_ENABLE([valgrind],
   [AS_HELP_STRING([--enable-valgrind],
     [run valgrind memory checker on tests, if available (default yes)])],
@@ -203,12 +203,25 @@ AM_CONDITIONAL([HAVE_RUBY_DEVEL], [test -f $RUBY_INC/ruby.h && test -n "$SWIG"])
 # Python bindings: To build python wrappers, the python-devel files must be present.
 AM_PATH_PYTHON()
 AS_IF([test -n "$PYTHON"], [
-    PKG_CHECK_MODULES([PYTHON], [python], [have_python_dev=yes],[
+    PKG_CHECK_MODULES([PYTHON], [python-$PYTHON_VERSION], [have_python_dev=yes],[
+    # We didn't find pkg-config information for python-2.7 this
+    # may mean we have an earlier python version:
+    # Try to find the include and library files directly in the default
+    # location
+    AC_MSG_WARN([Didn't find Python 2.7 developer libs - looking for older version])
+    PYTHON_INC=$($PYTHON -c 'import distutils.sysconfig; print distutils.sysconfig.get_python_inc()')
+    AC_CHECK_LIB([python$PYTHON_VERSION],[Py_Initialize])
+    AC_CHECK_FILE(["$PYTHON_INC/Python.h"],[
+        PYTHON_CFLAGS="-I$PYTHON_INC"
+        PYTHON_LIBS="-lpython$PYTHON_VERSION"
+        have_python_dev=yes
+    ],[
         if test yes = "$with_python" ; then
             AC_MSG_ERROR([Couldn't find Python developer libs - you probably need to install a python-dev or python-devel package])
         else
             AC_MSG_WARN([Couldn't find Python developer libs - you probably don't have a python-dev or python-devel package installed])
         fi
+    ])
     ])
     AC_SUBST(PYTHON_CFLAGS)
     AC_SUBST(PYTHON_LIBS)
@@ -310,52 +323,6 @@ AC_SUBST(DOWNLOAD_URL)
 AC_CHECK_HEADERS([boost/shared_ptr.hpp uuid/uuid.h],,
   AC_MSG_ERROR([Missing required header files.]))
 
-# Check for optional cluster requirements.
-tmp_LIBS=$LIBS
-tmp_LDFLAGS=$LDFLAGS
-LDFLAGS="$LDFLAGS -L/usr/lib/openais -L/usr/lib64/openais -L/usr/lib/corosync -L/usr/lib64/corosync"
-AC_CHECK_LIB([cpg],[cpg_local_get],[have_libcpg=yes],)
-AC_CHECK_HEADERS([openais/cpg.h corosync/cpg.h],[have_cpg_h=yes],)
-AC_ARG_WITH([cpg],  
-  [AS_HELP_STRING([--with-cpg], [Build with CPG support for clustering.])],
-  [case "${withval}" in
-    yes)			# yes - require dependencies
-    test x$have_libcpg = xyes || AC_MSG_ERROR([libcpg not found, install openais-devel or corosync-devel])
-    test x$have_cpg_h = xyes || AC_MSG_ERROR([cpg.h not found, install openais-devel or corosync-devel])
-    with_cpg=yes
-    ;;
-    no) with_cpg=no ;; 
-    *) AC_MSG_ERROR([Bad value ${withval} for --with-cpg option]) ;;
-   esac],
-   [		   # not specified - use if present
-    test x$have_libcpg = xyes -a x$have_cpg_h = xyes && with_cpg=yes
-   ]
-)
-AM_CONDITIONAL([HAVE_LIBCPG], [test x$with_cpg = xyes])
-# Clean up unnceccassary flags if we don't use clustering
-AS_IF([test ! x$with_cpg = xyes], [LDFLAGS=$tmp_LDFLAGS])
-
-AC_CHECK_LIB([cman],[cman_is_quorate],have_libcman=yes,)
-AC_CHECK_HEADERS([libcman.h],have_libcman_h=yes,)
-AC_ARG_WITH([libcman],  
-  [AS_HELP_STRING([--with-libcman], [Integration with libcman quorum service.])],
-  [case "${withval}" in
-    yes)			# yes - require dependencies
-    test x$have_libcman = xyes || AC_MSG_ERROR([libcman not found, install cman-devel or cmanlib-devel])
-    test x$have_libcman_h = xyes || AC_MSG_ERROR([libcman.h not found, install cman-devel or cmanlib-devel])
-    with_libcman=yes
-    ;;
-    no) with_libcman=no ;; 
-    *) AC_MSG_ERROR([Bad value ${withval} for --with-libcman option]) ;;
-   esac],
-   [				# not specified - use if present and we're using with_cpg
-    test x$have_libcman = xyes -a x$have_libcman_h = xyes -a x$with_cpg = xyes &&   with_libcman=yes
-   ]
-)
-AM_CONDITIONAL([HAVE_LIBCMAN], [test x$with_libcman = xyes])
-
-LIBS=$tmp_LIBS
-
 # Setup --with-sasl/--without-sasl as arguments to configure
 AC_ARG_WITH([sasl],
   [AS_HELP_STRING([--with-sasl], [Build with SASL authentication support])],
@@ -395,6 +362,15 @@ AS_IF([test "x$WANT_SASL" != xno],
    ])
 AM_CONDITIONAL([HAVE_SASL], [test "x$have_sasl" = xyes])
 AC_SUBST([SASL_PASSWD])
+
+# Allow integration against external AMQP 1.0 protocol engine
+AC_ARG_WITH([proton], AS_HELP_STRING([--with-proton], [Build with the proton toolkit for AMQP 1.0 support]))
+
+AS_IF([test "x$with_proton" = "xyes"], [
+   PKG_CHECK_MODULES([PROTON], [libqpid-proton])
+])
+AM_CONDITIONAL([HAVE_PROTON], [test "x$with_proton" = "xyes"])
+
 
 # Setup --with-xml/--without-xml as arguments to configure
 use_xml=yes
@@ -497,9 +473,9 @@ AC_ARG_WITH([ssl],
   [
     with_SSL=yes
     AC_PATH_PROG([NSPR_CONFIG], [nspr-config])
-    AS_IF([test x$NSPR_CONFIG = x], [with_SSL=no], 
+    AS_IF([test x$NSPR_CONFIG = x], [with_SSL=no],
       [AC_PATH_PROG([NSS_CONFIG], [nss-config])
-       AS_IF([test x$NSS_CONFIG = x], [with_SSL=no], 
+       AS_IF([test x$NSS_CONFIG = x], [with_SSL=no],
              [SSL_CFLAGS="`$NSPR_CONFIG --cflags` `$NSS_CONFIG --cflags`"
               SSL_LDFLAGS="`$NSPR_CONFIG --libs` `$NSS_CONFIG --libs`"])])
   ]
@@ -569,11 +545,11 @@ AC_ARG_WITH([probes],
 )
 
 # Check for some syslog capabilities not present in all systems
-AC_TRY_COMPILE([#include <sys/syslog.h>], 
+AC_TRY_COMPILE([#include <sys/syslog.h>],
                [int v = LOG_AUTHPRIV;],
                [AC_DEFINE([HAVE_LOG_AUTHPRIV], [1], [Set to 1 whether LOG_AUTHPRIV is supported.])],)
 
-AC_TRY_COMPILE([#include <sys/syslog.h>], 
+AC_TRY_COMPILE([#include <sys/syslog.h>],
                [int v = LOG_FTP;],
                [AC_DEFINE([HAVE_LOG_FTP], [1], [Set to 1 whether LOG_FTP is supported.])],)
 
@@ -590,8 +566,6 @@ AC_CHECK_LIB([socket],[socket],[SOCKET_LIB="-lsocket"],[SOCKET_LIB=""],[])
 AC_CHECK_LIB([nsl],[getipnodebyname],[NSL_LIB="-lnsl"],[NSL_LIB=""],[])
 SOCKLIBS="$SOCKET_LIB $NSL_LIB"
 AC_SUBST([SOCKLIBS])
-
-AM_PATH_PYTHON()
 
 # Used by env scripts to find libraries in cmake or autoconf builds.
 builddir_lib_suffix="/.libs"
@@ -629,6 +603,7 @@ AC_CONFIG_FILES([
   managementgen/Makefile
   etc/Makefile
   src/Makefile
+  src/tests/cpg_check.sh
   src/tests/Makefile
   src/tests/test_env.sh
   src/tests/install_env.sh
