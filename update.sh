@@ -21,8 +21,4 @@ svn status | grep -v '^?' | cut -b9- | xargs -I{} cp '{}' "$OWN_DIR/{}" 2>&1 | g
 echo "Generating the cqpid_php.diff file..."
 svn diff > "$OWN_DIR/cqpid_php.diff"
 
-# Copy any other dependencies to the cqpid_php checkout.
-echo "Updating the FindPHPDev.cmake file..."
-cp '/usr/share/cmake-2.8/Modules/FindPHPDev.cmake' "$OWN_DIR"
-
 # Tip: patch -p0 [--dry-run] < cqpid_php.diff
