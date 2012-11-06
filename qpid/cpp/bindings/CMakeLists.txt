@@ -17,6 +17,7 @@
 # under the License.
 #
 
+SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
 
 include(FindSWIG)
 include(UseSWIG)
